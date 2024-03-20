@@ -305,13 +305,13 @@ export class core_protocolProgram {
     
 // ********** CALCULATE IF IT IS PROFITABLE TO REBALANCE **********
     let rewards_from_last_period: bigint = reward_amounts[0] + reward_amounts[1] + reward_amounts[2] + reward_amounts[3] + reward_amounts[4];
-    let last_period_duration: bigint = (this.block.height - this.last_rebalance_height.get(BigInt("0"))! || BigInt("0"));
+    let last_period_duration: bigint = (this.block.height - this.last_rebalance_height.get(BigInt("0")) || BigInt("0"));
     let current_stake: bigint = d1_state.stake + d2_state.stake + d3_state.stake + d4_state.stake + d5_state.stake;
     let last_period_weekly_yield: bigint = this.PRECISION_UNSIGNED * rewards_from_last_period * this.PROFITABILITY_TIMEFRAME / (last_period_duration * current_stake);
 // compound once
     let current_distribution_projected_yield: bigint = total_balance * last_period_weekly_yield / this.PRECISION_UNSIGNED;
     
-    let projected_stake_after_rebalance: bigint = current_stake + this.core_protocol_balance.get(BigInt("0"))! || BigInt("0") + rewards_from_last_period;
+    let projected_stake_after_rebalance: bigint = current_stake + this.core_protocol_balance.get(BigInt("0")) || BigInt("0") + rewards_from_last_period;
     let projected_weekly_performance: bigint = ideal_portions[0] * performances[0] + ideal_portions[1] * performances[1] + ideal_portions[2] * performances[2] + ideal_portions[3] * performances[3] + ideal_portions[4] * performances[4];
     let projected_weekly_yield: bigint = projected_weekly_performance * projected_stake_after_rebalance / this.PRECISION_UNSIGNED;
     assert(projected_weekly_yield >= current_distribution_projected_yield);

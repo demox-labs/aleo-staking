@@ -263,7 +263,7 @@ const replaceHashFieldToToString = (leoLine: string): string => {
 const replaceCasts = (leoLine: string): string => {
   /// This regex matches the "as" keyword followed by any whitespace and then "i128", "u64", or "u32"
   const regex = /\s+as\s+(i128|i64|i32|i8|u128|u64|u32|u8)/g;
-  
+
   // Replace the matched pattern (the cast) with an empty string
   return leoLine.replace(regex, '');
 }
@@ -287,7 +287,7 @@ const replaceLeoNums = (leoLine: string): string => {
 const replaceForLoop = (leoLine: string): string => {
   // Define the regex pattern to capture the variable name, start value, and end value
   const regex = /for\s+(\w+):\s*u8\s+in\s+(\d+)u8\.\.(\d+)u8\s+\{/;
-  
+
   // Replace the matched pattern with TypeScript for loop syntax
   // Capturing groups are used to format the replacement string
   const replacedLine = leoLine.replace(regex, (match, variableName, startValue, endValue) => {
@@ -302,6 +302,8 @@ const replaceMapping = (leoLine: string): string => {
   if (leoLine.includes("residual_delegator")) {
     console.log(leoLine);
   }
+
+  const originalLine = leoLine;
   const get = /(\w+)\.get\((\w+)\)/;
   const getMatch = leoLine.match(get);
   if (getMatch) {
@@ -313,11 +315,17 @@ const replaceMapping = (leoLine: string): string => {
   const remove = /(\w+)\.remove\((\w+)\)/;
   const removeMatch = leoLine.match(remove);
   if (removeMatch) {
-    console.log(leoLine);
     const [ mappingName, keyName ] = removeMatch;
-    console.log(mappingName, keyName);
     // Construct the TypeScript equivalent line using captured values
     leoLine = leoLine.replace(remove, (match, mappingName, keyName) => `this.${mappingName}.delete(${keyName})`);
+  }
+
+  const containsRegex = /(\w+)\.contains\((\w+)\)/;
+  const containsMatch = leoLine.match(containsRegex);
+  if (containsMatch) {
+    const [ mappingName, keyName ] = containsMatch;
+    // Construct the TypeScript equivalent line using captured values
+    leoLine = leoLine.replace(containsRegex, (match, mappingName, keyName) => `this.${mappingName}.has(${keyName})`);
   }
 
   const getOrUseRegex = /(\w+)\.get_or_use\((\w+),\s*(\w+)\)/;
@@ -338,7 +346,7 @@ const replaceMapping = (leoLine: string): string => {
     // Using template literals to construct the TypeScript equivalent line
     leoLine = leoLine.replace(setRegex, `this.${mappingName}.set(${keyName}, ${setValue});`);
   }
-  
+
   const mappingGet = /\s*Mapping::get\((\w+),\s*(\w+)\)/;
   const mappingGetMatch = leoLine.match(mappingGet);
 
@@ -365,6 +373,21 @@ const replaceMapping = (leoLine: string): string => {
     const [mappingName, keyName, setValue ] = mappingSetMatch;
     // Construct the TypeScript equivalent line using captured values
     leoLine = leoLine.replace(mappingSet, (match, mappingName, keyName, setValue) => `this.${mappingName}.set(${keyName}, ${setValue})`);
+  }
+
+  // If there was an external mapping, after the replacements above,
+  // this regex will match the pattern "namespace.aleo/this.mapping.method(args)"
+  // and captures "namespace" as $1 and "this" as $2
+  const externalMappingRegex = /(\w+)\.aleo\/(\w+)/;
+  const externalMappingMatch = leoLine.match(externalMappingRegex);
+
+  // Check if we matched any of the mapping methods so this doesn't conflict with external function calls
+  if (externalMappingMatch && leoLine !== originalLine) {
+    const [, namespace] = externalMappingMatch;
+    // Replace the matched pattern with "$1.$2"
+    leoLine = leoLine.replace(externalMappingRegex, `this.${namespace}`);
+    // TODO: replace with appropriate address of calling contract
+    // leoLine = `this.${namespace}.caller = "contract";\n${TAB}${TAB}${leoLine}`;
   }
 
   return leoLine; // Return the original line if it doesn't match the pattern
@@ -428,7 +451,7 @@ const replaceCalls = (leoLine: string): string => {
     leoLine = `this.${object}.caller = "contract";\n${TAB}${TAB}${leoLine}`;
   }
   return leoLine;
-  
+
   // Replace the matched pattern with "this.$1.$2"
   // return leoLine.replace(regex, (match, object, methodWithArgs) => `this.${object}.caller = "contract";\n${TAB}${TAB}this.${object}.${methodWithArgs}`);
 }
@@ -437,7 +460,7 @@ const replaceArrayAccess = (leoLine: string): string => {
   // This regex matches the pattern "array[index]" and captures "array" as $1 and "index" as $2
   // It has been adjusted to match any number followed by optional 'u' and any number of digits
   const regex = /(\w+)\[(\d+)u?\d*\]/g;
-  
+
   // Replace the matched pattern with "array[index]" where index is just the numeric part
   // Here, the assumption is to remove the 'u' and any number after 'u' to just use the digit(s) before 'u'
   // If you want to keep the full unsigned integer literal as is, you can adjust the replacement pattern accordingly
@@ -527,7 +550,7 @@ const convertFunction = (leoLines: string[], tsCode: string): string => {
         continue;
       }
       if (line.includes(')')) {
-        
+
         collectingArgs = false;
         const lastIndex = line.indexOf(')') > 0 ? line.indexOf(')') : line.length;
         const firstIndex = line.indexOf('(') < lastIndex ? line.indexOf('(') + 1 : 0;
