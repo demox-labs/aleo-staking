@@ -1,4 +1,3 @@
-import { token } from './ale';
 import { credits } from './credits';
 import { creditsProgram } from './credits';
 
@@ -23,11 +22,11 @@ export class arc_0038Program {
   validator: Map<bigint, string> = new Map();
   commission_percent: Map<bigint, bigint> = new Map();
   is_initialized: Map<bigint, boolean> = new Map();
-  MINIMUM_BOND_POOL = BigInt("10_000_000_000");
+  MINIMUM_BOND_POOL = BigInt("10000000000");
   UNBONDING_PERIOD = BigInt("360");
   MAX_COMMISSION_RATE = BigInt("500");
   PRECISION_UNSIGNED = BigInt("1000");
-  SHARES_TO_MICROCREDITS = BigInt("1_000");
+  SHARES_TO_MICROCREDITS = BigInt("1000");
   CORE_PROTOCOL = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
   ADMIN = "aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru";
   credits: creditsProgram;
@@ -39,36 +38,6 @@ export class arc_0038Program {
     this.credits = creditsContract;
   }
 
-  //program arc_0038.aleo {// Owner of the program
-// Address of this program
-
-// 0u8 -> Whether the program has been initialized
-
-    /** Commission rate: BigInt("0") -> u128
-    * percentage of rewards taken as commission
-    * relative to precision of 1000
-    * e.g. BigInt("100") = 10%
-    */
-
-// 0u8 -> address of validator
-// 1u8 -> the address of the next validator, automatically updated after calling "bond_all"
-
-// 0u8 -> total balance of microcredits pooled
-
-// 0u8 -> total pool of delegator shares
-
-// address -> number of shares held by the delegator with this address
-
-// 0u8 -> balance pending withdrawal in microcredits
-
-    /** Unbonding allowed: BigInt("0") ->
-    * The height at which the current withdrawal batch will be done unbonding
-    * if not present or == BigInt("0"), a new batch can begin unbonding
-    */
-
-
-// address -> pending withdrawal for the delegator with this address
-
   initialize(
     commission_rate: bigint,
     validator_address: string,
@@ -78,7 +47,7 @@ export class arc_0038Program {
     assert(commission_rate <= this.MAX_COMMISSION_RATE);
 
     return this.finalize_initialize(commission_rate, validator_address);
-    }
+  }
 
   finalize_initialize(
     commission_rate: bigint,
@@ -92,7 +61,7 @@ export class arc_0038Program {
     this.total_balance.set(BigInt("0"), BigInt("0"));
     this.pending_withdrawal.set(BigInt("0"), BigInt("0"));
     this.current_batch_height.set(BigInt("0"), BigInt("0"));
-    }
+  }
 
   initial_deposit(
     input_record: credits,
@@ -100,15 +69,15 @@ export class arc_0038Program {
     validator_address: string,
   ) {
     assert(this.caller === this.ADMIN);
-// Must be a credits record because credits.aleo uses self.caller for transfers
-    this.credits.caller = "contract";
+    // Must be a credits record because credits.aleo uses self.caller for transfers
+    this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
     let updated_record: credits = this.credits.transfer_private_to_public(input_record, this.CORE_PROTOCOL, microcredits);
-    this.credits.caller = "contract";
+    this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
     this.credits.bond_public(validator_address, microcredits);
 
     this.finalize_initial_deposit(microcredits);
     return [updated_record];
-}
+  }
 
   finalize_initial_deposit(
     microcredits: bigint,
@@ -123,7 +92,7 @@ export class arc_0038Program {
     this.total_balance.set(BigInt("0"), microcredits);
     this.total_shares.set(BigInt("0"), microcredits * this.SHARES_TO_MICROCREDITS);
     this.delegator_shares.set(this.ADMIN, microcredits);
-    }
+  }
 
   inline_get_commission(
     rewards: bigint,
@@ -132,7 +101,7 @@ export class arc_0038Program {
     let commission: bigint = rewards * commission_rate / this.PRECISION_UNSIGNED;
     let commission_64: bigint = commission;
     return commission_64;
-    }
+  }
 
   inline_calculate_new_shares(
     balance: bigint,
@@ -144,7 +113,7 @@ export class arc_0038Program {
     let diff: bigint = (new_total_shares / this.PRECISION_UNSIGNED) - shares;
     let shares_to_mint: bigint = diff;
     return shares_to_mint;
-    }
+  }
 
   set_commission_percent(
     new_commission_rate: bigint,
@@ -154,13 +123,13 @@ export class arc_0038Program {
     assert(new_commission_rate <= this.MAX_COMMISSION_RATE);
 
     return this.finalize_set_commission_percent(new_commission_rate);
-    }
+  }
 
   finalize_set_commission_percent(
     new_commission_rate: bigint,
   ) {
-// Make sure all commission is claimed before changing the rate
-    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!;; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
+    // Make sure all commission is claimed before changing the rate
+    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
@@ -175,32 +144,32 @@ export class arc_0038Program {
     this.total_shares.set(BigInt("0"), current_shares + new_commission_shares);
     this.total_balance.set(BigInt("0"), current_balance + new_commission);
 
-    this.commission_percent.set(BigInt("0"), commission_rate);
-    }
+    this.commission_percent.set(BigInt("0"), new_commission_rate);
+  }
 
-// Update the validator address, to be applied automatically on the next bond_all call
+  // Update the validator address, to be applied automatically on the next bond_all call
   set_next_validator(
     validator_address: string,
   ) {
     assert(this.caller === this.ADMIN);
 
     return this.finalize_set_next_validator(validator_address);
-    }
+  }
 
   finalize_set_next_validator(
     validator_address: string,
   ) {
     this.validator.set(BigInt("1"), validator_address);
-    }
+  }
 
   unbond_all(
     pool_balance: bigint,
   ) {
-    this.credits.caller = "contract";
+    this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
     this.credits.unbond_public(pool_balance);
 
     return this.finalize_unbond_all(pool_balance);
-    }
+  }
 
   finalize_unbond_all(
     pool_balance: bigint,
@@ -208,8 +177,8 @@ export class arc_0038Program {
     let next_validator: boolean = this.validator.has(BigInt("1"));
     assert(next_validator);
 
-// Make sure all commission is claimed before unbonding
-    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!;; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
+    // Make sure all commission is claimed before unbonding
+    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
@@ -224,66 +193,66 @@ export class arc_0038Program {
     this.total_shares.set(BigInt("0"), current_shares + new_commission_shares);
     this.total_balance.set(BigInt("0"), current_balance + new_commission);
 
-// Assert that the pool will be fully unbonded
+    // Assert that the pool will be fully unbonded
     let residual_balance: bigint = bonded - pool_balance;
     assert(residual_balance < this.MINIMUM_BOND_POOL);
-    }
+  }
 
   claim_unbond(
   ) {
-    this.credits.caller = "contract";
+    this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
     this.credits.claim_unbond_public();
 
     return this.finalize_claim_unbond();
-    }
+  }
 
   finalize_claim_unbond(
   ) {
     this.current_batch_height.delete(BigInt("0"));
-    }
+  }
 
   bond_all(
     validator_address: string,
     amount: bigint,
   ) {
-// Call will fail if there is any balance still bonded to another validator
-    this.credits.caller = "contract";
+    // Call will fail if there is any balance still bonded to another validator
+    this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
     this.credits.bond_public(validator_address, amount);
 
     return this.finalize_bond_all(validator_address, amount);
-    }
+  }
 
   finalize_bond_all(
     validator_address: string,
     amount: bigint,
   ) {
-    let unbonding_balance: bigint = this.credits.unbonding.get(this.CORE_PROTOCOL)!;; // credits.aleo/unbonding.get(this.CORE_PROTOCOL);
+    let unbonding_balance: bigint = this.credits.unbonding.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/unbonding.get(this.CORE_PROTOCOL);
     assert(unbonding_balance === BigInt("0"));
 
-    let account_balance: bigint = this.credits.account.get(this.CORE_PROTOCOL)!;; // credits.aleo/account.get(this.CORE_PROTOCOL);
+    let account_balance: bigint = this.credits.account.get(this.CORE_PROTOCOL)!; // credits.aleo/account.get(this.CORE_PROTOCOL);
     let pending_withdrawals: bigint = this.pending_withdrawal.get(BigInt("0"))!;
     let available_balance: bigint = account_balance - pending_withdrawals;
     assert(amount === available_balance);
 
-// Set validator
+    // Set validator
     let has_next_validator: boolean = this.validator.has(BigInt("1"));
     let current_validator: string = has_next_validator ? this.validator.get(BigInt("1"))! : this.validator.get(BigInt("0"))!;
     assert(validator_address === current_validator);
 
     this.validator.set(BigInt("0"), current_validator);
     this.validator.delete(BigInt("1"));
-    }
+  }
 
   claim_commission(
   ) {
     assert(this.caller === this.ADMIN);
     return this.finalize_claim_commission();
-    }
+  }
 
   finalize_claim_commission(
   ) {
-// Distribute shares for new commission
-    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!;; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
+    // Distribute shares for new commission
+    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
@@ -297,26 +266,26 @@ export class arc_0038Program {
 
     this.total_shares.set(BigInt("0"), current_shares + new_commission_shares);
     this.total_balance.set(BigInt("0"), current_balance + new_commission);
-    }
+  }
 
   deposit_public(
     input_record: credits,
     microcredits: bigint,
   ) {
-// Must be a credits record because credits.aleo uses self.caller for transfers
-    this.credits.caller = "contract";
+    // Must be a credits record because credits.aleo uses self.caller for transfers
+    this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
     let updated_record: credits = this.credits.transfer_private_to_public(input_record, this.CORE_PROTOCOL, microcredits);
 
     this.finalize_deposit_public(this.caller, microcredits);
     return [updated_record];
-}
+  }
 
   finalize_deposit_public(
     caller: string,
     microcredits: bigint,
   ) {
-// Distribute shares for new commission
-    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!;; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
+    // Distribute shares for new commission
+    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
@@ -331,55 +300,55 @@ export class arc_0038Program {
     current_shares += new_commission_shares;
     current_balance += new_commission;
 
-// Calculate mint for deposit
+    // Calculate mint for deposit
     let new_shares: bigint = this.inline_calculate_new_shares(current_balance, microcredits, current_shares);
 
-// Ensure mint amount is valid
+    // Ensure mint amount is valid
     assert(new_shares >= BigInt("1"));
 
-// Update delegator_shares mapping
+    // Update delegator_shares mapping
     let shares: bigint = this.delegator_shares.get(caller) || BigInt("0");
     this.delegator_shares.set(caller, shares + new_shares);
 
-// Update total shares
+    // Update total shares
     this.total_shares.set(BigInt("0"), current_shares + new_shares);
 
-// Update total_balance
+    // Update total_balance
     this.total_balance.set(BigInt("0"), current_balance + microcredits);
-    }
+  }
 
   withdraw_public(
     withdrawal_shares: bigint,
     total_withdrawal: bigint,
   ) {
-    this.credits.caller = "contract";
+    this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
     this.credits.unbond_public(total_withdrawal);
 
     return this.finalize_withdraw_public(withdrawal_shares, total_withdrawal, this.caller);
-    }
+  }
 
   finalize_withdraw_public(
     withdrawal_shares: bigint,
     total_withdrawal: bigint,
     owner: string,
   ) {
-// Assert that they don't have any pending withdrawals
+    // Assert that they don't have any pending withdrawals
     let currently_withdrawing: boolean = this.withdrawals.has(owner);
     assert(currently_withdrawing === false);
 
-// Determine if the withdrawal can fit into the current batch
+    // Determine if the withdrawal can fit into the current batch
     let current_batch: bigint = this.current_batch_height.get(BigInt("0")) || BigInt("0");
     let min_claim_height: bigint = this.block.height + this.UNBONDING_PERIOD;
     let new_batch: boolean = current_batch == BigInt("0");
     let unbonding_allowed: boolean = new_batch || current_batch >= min_claim_height;
     assert(unbonding_allowed);
 
-// Assert that they have enough to withdraw
+    // Assert that they have enough to withdraw
     let delegator_balance: bigint = this.delegator_shares.get(owner)!;
     assert(delegator_balance >= withdrawal_shares);
 
-// Distribute shares for new commission
-    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!;; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
+    // Distribute shares for new commission
+    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
@@ -394,35 +363,35 @@ export class arc_0038Program {
     current_shares += new_commission_shares;
     current_balance += new_commission;
 
-// Calculate withdrawal amount
+    // Calculate withdrawal amount
     let withdraw_ratio: bigint = (withdrawal_shares * this.PRECISION_UNSIGNED) / current_shares;
     let withdrawal_calculation: bigint = (current_balance * withdraw_ratio) / this.PRECISION_UNSIGNED;
 
-// If the calculated withdrawal amount is greater than total_withdrawal, the excess will stay in the pool
+    // If the calculated withdrawal amount is greater than total_withdrawal, the excess will stay in the pool
     assert(withdrawal_calculation >= total_withdrawal);
 
-// Update withdrawals mappings
+    // Update withdrawals mappings
     let batch_height: bigint = new_batch ? this.inline_get_new_batch_height(this.block.height) : current_batch;
     this.current_batch_height.set(BigInt("0"), batch_height);
     let withdrawal: withdrawal_state = {
-    microcredits: total_withdrawal,
-    claim_block: batch_height
+      microcredits: total_withdrawal,
+      claim_block: batch_height
     };
     this.withdrawals.set(owner, withdrawal);
 
-// Update pending withdrawal
+    // Update pending withdrawal
     let currently_pending: bigint = this.pending_withdrawal.get(BigInt("0"))!;
     this.pending_withdrawal.set(BigInt("0"), currently_pending + total_withdrawal);
 
-// Update total balance
+    // Update total balance
     this.total_balance.set(BigInt("0"), current_balance - total_withdrawal);
 
-// Update total shares
+    // Update total shares
     this.total_shares.set(BigInt("0"), current_shares - withdrawal_shares);
 
-// Update delegator_shares mapping
+    // Update delegator_shares mapping
     this.delegator_shares.set(owner, delegator_balance - withdrawal_shares);
-    }
+  }
 
   inline_get_new_batch_height(
     height: bigint,
@@ -430,66 +399,66 @@ export class arc_0038Program {
     let rounded_down: bigint = (height) / BigInt("1000") * BigInt("1000");
     let rounded_up: bigint = rounded_down + BigInt("1000");
     return rounded_up;
-    }
+  }
 
   create_withdraw_claim(
     withdrawal_shares: bigint,
   ) {
     return this.finalize_create_withdraw_claim(withdrawal_shares, this.caller);
-    }
+  }
 
   finalize_create_withdraw_claim(
     withdrawal_shares: bigint,
     owner: string,
   ) {
-// Assert that they don't have any pending withdrawals
+    // Assert that they don't have any pending withdrawals
     let currently_withdrawing: boolean = this.withdrawals.has(owner);
     assert(currently_withdrawing === false);
 
-    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!;; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
+    let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
     assert(bonded === BigInt("0"));
 
-// Assert that they have enough to withdraw
+    // Assert that they have enough to withdraw
     let delegator_balance: bigint = this.delegator_shares.get(owner)!;
     assert(delegator_balance >= withdrawal_shares);
 
-// Calculate withdrawal amount
+    // Calculate withdrawal amount
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let withdraw_ratio: bigint = (withdrawal_shares * this.PRECISION_UNSIGNED) / current_shares;
     let withdrawal_calculation: bigint = (current_balance * withdraw_ratio) / this.PRECISION_UNSIGNED;
     let total_withdrawal: bigint = withdrawal_calculation;
 
-// Update withdrawals mappings
+    // Update withdrawals mappings
     let withdrawal: withdrawal_state = {
-    microcredits: total_withdrawal,
-    claim_block: this.block.height
+      microcredits: total_withdrawal,
+      claim_block: this.block.height
     };
     this.withdrawals.set(owner, withdrawal);
 
-// Update pending withdrawal
+    // Update pending withdrawal
     let currently_pending: bigint = this.pending_withdrawal.get(BigInt("0"))!;
     this.pending_withdrawal.set(BigInt("0"), currently_pending + total_withdrawal);
 
-// Update total balance
+    // Update total balance
     this.total_balance.set(BigInt("0"), current_balance - total_withdrawal);
 
-// Update total shares
+    // Update total shares
     this.total_shares.set(BigInt("0"), current_shares - withdrawal_shares);
 
-// Update delegator_shares mapping
+    // Update delegator_shares mapping
     this.delegator_shares.set(owner, delegator_balance - withdrawal_shares);
-    }
+  }
 
   claim_withdrawal_public(
     recipient: string,
     amount: bigint,
   ) {
-    this.credits.caller = "contract";
+    this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
     this.credits.transfer_public(recipient, amount);
 
     return this.finalize_claim_withdrawal_public(recipient, amount);
-    }
+  }
 
   finalize_claim_withdrawal_public(
     owner: string,
@@ -499,11 +468,11 @@ export class arc_0038Program {
     assert(this.block.height >= withdrawal.claim_block);
     assert(withdrawal.microcredits === amount);
 
-// Remove withdrawal
+    // Remove withdrawal
     this.withdrawals.delete(owner);
 
-// Update pending withdrawal
+    // Update pending withdrawal
     let currently_pending: bigint = this.pending_withdrawal.get(BigInt("0"))!;
     this.pending_withdrawal.set(BigInt("0"), currently_pending - amount);
-    }
-    }
+  }
+}
