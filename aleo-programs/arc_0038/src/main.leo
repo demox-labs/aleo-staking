@@ -105,12 +105,20 @@ program arc_0038.aleo {
     return commission_64;
   }
 
+  transition get_commission_test(rewards: u128, commission_rate: u128) -> u64 {
+    return get_commission(rewards, commission_rate);
+  }
+
   inline calculate_new_shares(balance: u128, deposit: u128, shares: u128) -> u64 {
     let pool_ratio: u128 = ((shares * PRECISION_UNSIGNED) / balance);
     let new_total_shares: u128 = (balance + deposit) * pool_ratio;
     let diff: u128 = (new_total_shares / PRECISION_UNSIGNED) - shares;
     let shares_to_mint: u64 = diff as u64;
     return shares_to_mint;
+  }
+
+  transition calculate_new_shares_test(balance: u128, deposit: u128, shares: u128) -> u64 {
+    return calculate_new_shares(balance, deposit, shares);
   }
 
   transition set_commission_percent(public new_commission_rate: u128) {
@@ -390,6 +398,10 @@ program arc_0038.aleo {
     let rounded_down: u32 = (height) / 1_000u32 * 1_000u32;
     let rounded_up: u32 = rounded_down + 1_000u32;
     return rounded_up;
+  }
+
+  transition get_new_batch_height_test(height: u32) -> u32 {
+    return get_new_batch_height(height);
   }
 
   transition create_withdraw_claim(public withdrawal_shares: u64) {

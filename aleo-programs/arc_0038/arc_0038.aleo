@@ -12,6 +12,13 @@ struct bond_state:
     // The amount of microcredits that are currently bonded to the specified validator.
     microcredits as u64;
 
+// copied from credits.aleo, as structs are not importable
+// The `unbond_state` struct tracks the microcredits that are currently unbonding, along with the unlock height.
+struct unbond_state:
+    // The amount of microcredits that are currently unbonding.
+    microcredits as u64;
+    // The block height at which the unbonding will be complete, and can be claimed.
+    height as u32;
 
 mapping is_initialized:
 	key as u8.public;
@@ -242,7 +249,7 @@ finalize bond_all:
     input r1 as address.public;
     input r2 as u64.public;
     await r0;
-    cast 0u64 0u32 into r3 as credits.aleo/unbond_state;
+    cast 0u64 0u32 into r3 as unbond_state;
     get.or_use credits.aleo/unbonding[aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny] r3 into r4;
     assert.eq r4.microcredits 0u64;
     get credits.aleo/account[aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny] into r5;
