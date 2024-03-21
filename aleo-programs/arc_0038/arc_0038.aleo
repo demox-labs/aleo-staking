@@ -5,6 +5,13 @@ struct withdrawal_state:
     microcredits as u64;
     claim_block as u32;
 
+// copied from credits.aleo, as structs are not importable
+struct bond_state:
+    // The address of the validator.
+    validator as address;
+    // The amount of microcredits that are currently bonded to the specified validator.
+    microcredits as u64;
+
 
 mapping is_initialized:
 	key as u8.public;
@@ -119,7 +126,7 @@ function set_commission_percent:
 
 finalize set_commission_percent:
     input r0 as u128.public;
-    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r1 as credits.aleo/bond_state;
+    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r1 as bond_state;
     get.or_use credits.aleo/bonded[aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny] r1 into r2;
     get total_balance[0u8] into r3;
     get total_shares[0u8] into r4;
@@ -176,7 +183,7 @@ finalize unbond_all:
     await r0;
     contains validator[1u8] into r2;
     assert.eq r2 true;
-    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r3 as credits.aleo/bond_state;
+    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r3 as bond_state;
     get.or_use credits.aleo/bonded[aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny] r3 into r4;
     get total_balance[0u8] into r5;
     get total_shares[0u8] into r6;
@@ -257,7 +264,7 @@ function claim_commission:
     output r0 as arc_0038.aleo/claim_commission.future;
 
 finalize claim_commission:
-    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r0 as credits.aleo/bond_state;
+    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r0 as bond_state;
     get.or_use credits.aleo/bonded[aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny] r0 into r1;
     get total_balance[0u8] into r2;
     get total_shares[0u8] into r3;
@@ -303,7 +310,7 @@ finalize deposit_public:
     input r1 as address.public;
     input r2 as u64.public;
     await r0;
-    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r3 as credits.aleo/bond_state;
+    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r3 as bond_state;
     get.or_use credits.aleo/bonded[aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny] r3 into r4;
     get total_balance[0u8] into r5;
     get total_shares[0u8] into r6;
@@ -379,7 +386,7 @@ finalize withdraw_public:
     get delegator_shares[r3] into r10;
     gte r10 r1 into r11;
     assert.eq r11 true;
-    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r12 as credits.aleo/bond_state;
+    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r12 as bond_state;
     get.or_use credits.aleo/bonded[aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny] r12 into r13;
     get total_balance[0u8] into r14;
     get total_shares[0u8] into r15;
@@ -446,7 +453,7 @@ finalize create_withdraw_claim:
     input r1 as address.public;
     contains withdrawals[r1] into r2;
     assert.eq r2 false;
-    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r3 as credits.aleo/bond_state;
+    cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r3 as bond_state;
     get.or_use credits.aleo/bonded[aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny] r3 into r4;
     assert.eq r4.microcredits 0u64;
     get delegator_shares[r1] into r5;
