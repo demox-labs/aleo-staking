@@ -53,8 +53,9 @@ export class arc_0038Program {
     commission_rate: bigint,
     validator_address: string,
   ) {
-    assert(this.is_initialized.get(BigInt("0"))! === false);
+    assert((this.is_initialized.get(BigInt("0")) || false) === false);
 
+    this.is_initialized.set(BigInt("0"), true);
     this.commission_percent.set(BigInt("0"), commission_rate);
     this.validator.set(BigInt("0"), validator_address);
     this.total_shares.set(BigInt("0"), BigInt("0"));
@@ -67,7 +68,7 @@ export class arc_0038Program {
     input_record: credits,
     microcredits: bigint,
     validator_address: string,
-  ) {
+  ): credits {
     assert(this.caller === this.ADMIN);
     // Must be a credits record because credits.aleo uses self.caller for transfers
     this.credits.caller = "aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny";
@@ -76,7 +77,7 @@ export class arc_0038Program {
     this.credits.bond_public(validator_address, microcredits);
 
     this.finalize_initial_deposit(microcredits);
-    return [updated_record];
+    return updated_record;
   }
 
   finalize_initial_deposit(
@@ -91,7 +92,7 @@ export class arc_0038Program {
 
     this.total_balance.set(BigInt("0"), microcredits);
     this.total_shares.set(BigInt("0"), microcredits * this.SHARES_TO_MICROCREDITS);
-    this.delegator_shares.set(this.ADMIN, microcredits);
+    this.delegator_shares.set(this.ADMIN, microcredits * this.SHARES_TO_MICROCREDITS);
   }
 
   inline_get_commission(
@@ -108,8 +109,7 @@ export class arc_0038Program {
     deposit: bigint,
     shares: bigint,
   ) {
-    let pool_ratio: bigint = ((shares * this.PRECISION_UNSIGNED) / balance);
-    let new_total_shares: bigint = (balance + deposit) * pool_ratio;
+    let new_total_shares: bigint = (shares * this.PRECISION_UNSIGNED) * (balance + deposit) / (balance * this.PRECISION_UNSIGNED);
     let diff: bigint = (new_total_shares / this.PRECISION_UNSIGNED) - shares;
     let shares_to_mint: bigint = diff;
     return shares_to_mint;
@@ -226,13 +226,12 @@ export class arc_0038Program {
     validator_address: string,
     amount: bigint,
   ) {
-    let unbonding_balance: bigint = this.credits.unbonding.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/unbonding.get(this.CORE_PROTOCOL);
-    assert(unbonding_balance === BigInt("0"));
-
     let account_balance: bigint = this.credits.account.get(this.CORE_PROTOCOL)!; // credits.aleo/account.get(this.CORE_PROTOCOL);
     let pending_withdrawals: bigint = this.pending_withdrawal.get(BigInt("0"))!;
-    let available_balance: bigint = account_balance - pending_withdrawals;
-    assert(amount === available_balance);
+    console.log('balance: ' + account_balance.toLocaleString());
+    console.log('amount: ' + amount.toLocaleString());
+    console.log('bonded: ' + this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits.toLocaleString());
+    assert(account_balance === pending_withdrawals);
 
     // Set validator
     let has_next_validator: boolean = this.validator.has(BigInt("1"));
@@ -277,7 +276,7 @@ export class arc_0038Program {
     let updated_record: credits = this.credits.transfer_private_to_public(input_record, this.CORE_PROTOCOL, microcredits);
 
     this.finalize_deposit_public(this.caller, microcredits);
-    return [updated_record];
+    return updated_record;
   }
 
   finalize_deposit_public(
@@ -286,22 +285,31 @@ export class arc_0038Program {
   ) {
     // Distribute shares for new commission
     let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
+    console.log('bonded: ' + bonded.toLocaleString());
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
+    console.log('current balance: ' + current_balance.toLocaleString());
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
     let commission_rate: bigint = this.commission_percent.get(BigInt("0"))!;
     let new_commission: bigint = this.inline_get_commission(rewards, commission_rate);
+    console.log('rewards: ' + rewards.toLocaleString());
+    console.log('commission: ' + new_commission.toLocaleString());
     current_balance += rewards - new_commission;
 
     let new_commission_shares: bigint = this.inline_calculate_new_shares(current_balance, new_commission, current_shares);
+    console.log('new commission shares: ' + new_commission_shares.toLocaleString());
     let current_commission: bigint = this.delegator_shares.get(this.ADMIN) || BigInt("0");
     this.delegator_shares.set(this.ADMIN, current_commission + new_commission_shares);
-
     current_shares += new_commission_shares;
     current_balance += new_commission;
 
+    console.log('balance: ' + current_balance.toLocaleString());
+    console.log('deposit: ' + microcredits.toLocaleString());
+    console.log('total shares: ' + current_shares.toLocaleString());
+
     // Calculate mint for deposit
     let new_shares: bigint = this.inline_calculate_new_shares(current_balance, microcredits, current_shares);
+    console.log('delegator shares: ' + new_shares.toLocaleString());
 
     // Ensure mint amount is valid
     assert(new_shares >= BigInt("1"));
@@ -312,9 +320,11 @@ export class arc_0038Program {
 
     // Update total shares
     this.total_shares.set(BigInt("0"), current_shares + new_shares);
+    console.log('total shares: ' + (current_shares + new_shares).toLocaleString());
 
     // Update total_balance
     this.total_balance.set(BigInt("0"), current_balance + microcredits);
+    console.log('total balance: ' + (current_balance + microcredits).toLocaleString());
   }
 
   withdraw_public(
@@ -345,16 +355,22 @@ export class arc_0038Program {
 
     // Assert that they have enough to withdraw
     let delegator_balance: bigint = this.delegator_shares.get(owner)!;
+    console.log('delegator balance: ' + delegator_balance.toLocaleString());
+    console.log('withdrawal shares: ' + withdrawal_shares.toLocaleString());
     assert(delegator_balance >= withdrawal_shares);
 
     // Distribute shares for new commission
     let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)!.microcredits; // credits.aleo/bonded.get(this.CORE_PROTOCOL);
+    console.log('bonded: ' + bonded.toLocaleString());
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
+    console.log('current balance: ' + current_balance.toLocaleString());
+    console.log('account: ' + this.credits.account.get(this.CORE_PROTOCOL)!.toLocaleString());
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
     let commission_rate: bigint = this.commission_percent.get(BigInt("0"))!;
     let new_commission: bigint = this.inline_get_commission(rewards, commission_rate);
     current_balance += rewards - new_commission;
+    console.log('rewards: ' + rewards.toLocaleString());
 
     let new_commission_shares: bigint = this.inline_calculate_new_shares(current_balance, new_commission, current_shares);
     let current_commission: bigint = this.delegator_shares.get(this.ADMIN) || BigInt("0");
@@ -363,9 +379,13 @@ export class arc_0038Program {
     current_shares += new_commission_shares;
     current_balance += new_commission;
 
+    console.log('balance: ' + current_balance.toLocaleString());
+    console.log('total shares: ' + current_shares.toLocaleString());
+
     // Calculate withdrawal amount
-    let withdraw_ratio: bigint = (withdrawal_shares * this.PRECISION_UNSIGNED) / current_shares;
-    let withdrawal_calculation: bigint = (current_balance * withdraw_ratio) / this.PRECISION_UNSIGNED;
+    let withdrawal_calculation: bigint = (withdrawal_shares * this.PRECISION_UNSIGNED * current_balance) / (current_shares * this.PRECISION_UNSIGNED);
+    console.log('withdrawal calculation: ' + withdrawal_calculation.toLocaleString());
+    console.log('total withdrawal: ' + total_withdrawal.toLocaleString());
 
     // If the calculated withdrawal amount is greater than total_withdrawal, the excess will stay in the pool
     assert(withdrawal_calculation >= total_withdrawal);
@@ -425,8 +445,7 @@ export class arc_0038Program {
     // Calculate withdrawal amount
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
-    let withdraw_ratio: bigint = (withdrawal_shares * this.PRECISION_UNSIGNED) / current_shares;
-    let withdrawal_calculation: bigint = (current_balance * withdraw_ratio) / this.PRECISION_UNSIGNED;
+    let withdrawal_calculation: bigint = (withdrawal_shares * this.PRECISION_UNSIGNED * current_balance) / (current_shares * this.PRECISION_UNSIGNED);
     let total_withdrawal: bigint = withdrawal_calculation;
 
     // Update withdrawals mappings

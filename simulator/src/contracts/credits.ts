@@ -1,4 +1,4 @@
-import { assert } from '../utils/helpers';
+import assert from 'assert';
 
 export interface credits {
   owner: string;
@@ -52,7 +52,7 @@ export class creditsProgram {
     recipient: string,
     amount: bigint
   ): credits {
-    const recipientBalance: bigint = this.account.get(recipient)!;
+    const recipientBalance: bigint = this.account.get(recipient) || BigInt(0);
     const newRecipientBalance: bigint = recipientBalance + amount;
     this.account.set(recipient, newRecipientBalance);
     input_record.microcredits -= amount;
@@ -98,6 +98,7 @@ export class creditsProgram {
 
     bonded.microcredits += amount;
     this.bonded.set(delegator, bonded);
+    this.account.set(delegator, this.account.get(delegator)! - amount);
   }
 
   unbond_public(
