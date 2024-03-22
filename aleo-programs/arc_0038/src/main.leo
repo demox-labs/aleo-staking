@@ -4,9 +4,9 @@ program arc_0038.aleo {
   // Owner of the program
   const ADMIN: address = aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru;
   // Address of this program
-  const CORE_PROTOCOL: address = aleo17hwvp7fl5da40hd29heasjjm537uqce489hhuc3lwhxfm0njucpq0rvfny;
+  const CORE_PROTOCOL: address = aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt;
   const SHARES_TO_MICROCREDITS: u64 = 1_000u64;
-  const PRECISION_UNSIGNED: u128 = 1000u128;
+  const PRECISION_UNSIGNED: u128 = 1_000u128;
   const MAX_COMMISSION_RATE: u128 = 500u128;
   const UNBONDING_PERIOD: u32 = 360u32;
   const MINIMUM_BOND_POOL: u64 = 10_000_000_000u64;
@@ -60,8 +60,10 @@ program arc_0038.aleo {
   }
 
   finalize initialize(commission_rate: u128, validator_address: address) {
-    assert_eq(is_initialized.get(0u8), false);
+    let initialized: bool = is_initialized.get_or_use(0u8, false);
+    assert_eq(initialized, false);
 
+    is_initialized.set(0u8, true);
     commission_percent.set(0u8, commission_rate);
     validator.set(0u8, validator_address);
     total_shares.set(0u8, 0u64);
@@ -110,9 +112,8 @@ program arc_0038.aleo {
   }
 
   inline calculate_new_shares(balance: u128, deposit: u128, shares: u128) -> u64 {
-    let pool_ratio: u128 = ((shares * PRECISION_UNSIGNED) / balance);
-    let new_total_shares: u128 = (balance + deposit) * pool_ratio;
-    let diff: u128 = (new_total_shares / PRECISION_UNSIGNED) - shares;
+    let new_total_shares: u128 = (shares * PRECISION_UNSIGNED) * (balance + deposit) / (balance * PRECISION_UNSIGNED);
+    let diff: u128 = new_total_shares - shares;
     let shares_to_mint: u64 = diff as u64;
     return shares_to_mint;
   }
@@ -175,13 +176,17 @@ program arc_0038.aleo {
     let next_validator: bool = validator.contains(1u8);
     assert(next_validator);
 
-    // Make sure all commission is claimed before unbonding
     // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
     let default: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
     let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits;
+    // Assert that the pool was fully unbonded
+    assert_eq(bonded, 0u64);
+
+    // Make sure all commission is claimed before unbonding
+    // TODO: Use unbonding amount or pool_balance??
     let current_balance: u64 = total_balance.get(0u8);
     let current_shares: u64 = total_shares.get(0u8);
     let rewards: u64 = bonded > current_balance ? bonded - current_balance : 0u64;
@@ -195,10 +200,6 @@ program arc_0038.aleo {
 
     total_shares.set(0u8, current_shares + new_commission_shares);
     total_balance.set(0u8, current_balance + new_commission);
-
-    // Assert that the pool will be fully unbonded
-    let residual_balance: u64 = bonded - pool_balance;
-    assert(residual_balance < MINIMUM_BOND_POOL);
   }
 
   transition claim_unbond() {
@@ -215,22 +216,20 @@ program arc_0038.aleo {
     // Call will fail if there is any balance still bonded to another validator
     credits.aleo/bond_public(validator_address, amount);
 
-    return then finalize(validator_address, amount);
+    return then finalize(validator_address);
   }
 
-  finalize bond_all(validator_address: address, amount: u64) {
+  finalize bond_all(validator_address: address) {
     // Simulate call to credits.aleo/unbonding.get_or_use(CORE_PROTOCOL).microcredits;
     let default: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
     let unbonding_balance: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits;
-    assert_eq(unbonding_balance, 0u64);
-
     let account_balance: u64 = total_balance.get(1u8); // credits.aleo/account.get(CORE_PROTOCOL);
     let pending_withdrawals: u64 = pending_withdrawal.get(0u8);
-    let available_balance: u64 = account_balance - pending_withdrawals;
-    assert_eq(amount, available_balance);
+    let remaining_balance: u64 = account_balance + unbonding_balance;
+    assert(remaining_balance >= pending_withdrawals);
 
     // Set validator
     let has_next_validator: bool = validator.contains(1u8);
@@ -350,6 +349,8 @@ program arc_0038.aleo {
       claim_block: 0u32
     };
     let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits; // credits.aleo/bonded.get(CORE_PROTOCOL).microcredits;
+    // Add back the withdrawal amount to appropriately calculate rewards before the withdrawal
+    bonded += total_withdrawal;
     let current_balance: u64 = total_balance.get(0u8);
     let current_shares: u64 = total_shares.get(0u8);
     let rewards: u64 = bonded > current_balance ? bonded - current_balance : 0u64;
@@ -365,8 +366,7 @@ program arc_0038.aleo {
     current_balance += new_commission;
 
     // Calculate withdrawal amount
-    let withdraw_ratio: u128 = (withdrawal_shares as u128 * PRECISION_UNSIGNED) / current_shares as u128;
-    let withdrawal_calculation: u128 = (current_balance as u128 * withdraw_ratio) / PRECISION_UNSIGNED;
+    let withdrawal_calculation: u128 = (withdrawal_shares as u128 * current_balance as u128 * PRECISION_UNSIGNED) / (current_shares as u128 * PRECISION_UNSIGNED);
 
     // If the calculated withdrawal amount is greater than total_withdrawal, the excess will stay in the pool
     assert(withdrawal_calculation >= total_withdrawal as u128);
@@ -395,8 +395,8 @@ program arc_0038.aleo {
   }
 
   inline get_new_batch_height(height: u32) -> u32 {
-    let rounded_down: u32 = (height) / 1_000u32 * 1_000u32;
-    let rounded_up: u32 = rounded_down + 1_000u32;
+    let rounded_down: u32 = (height) / 1000u32 * 1000u32;
+    let rounded_up: u32 = rounded_down + 1000u32;
     return rounded_up;
   }
 
@@ -428,8 +428,7 @@ program arc_0038.aleo {
     // Calculate withdrawal amount
     let current_balance: u64 = total_balance.get(0u8);
     let current_shares: u64 = total_shares.get(0u8);
-    let withdraw_ratio: u128 = (withdrawal_shares as u128 * PRECISION_UNSIGNED) / current_shares as u128;
-    let withdrawal_calculation: u128 = (current_balance as u128 * withdraw_ratio) / PRECISION_UNSIGNED;
+    let withdrawal_calculation: u128 = (withdrawal_shares as u128 * current_balance as u128 * PRECISION_UNSIGNED) / (current_shares as u128 * PRECISION_UNSIGNED);
     let total_withdrawal: u64 = withdrawal_calculation as u64;
 
     // Update withdrawals mappings
