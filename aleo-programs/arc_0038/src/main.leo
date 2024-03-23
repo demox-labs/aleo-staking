@@ -95,7 +95,7 @@ program arc_0038.aleo {
 
     total_balance.set(0u8, microcredits);
     total_shares.set(0u8, microcredits * SHARES_TO_MICROCREDITS);
-    delegator_shares.set(ADMIN, microcredits);
+    delegator_shares.set(ADMIN, microcredits * SHARES_TO_MICROCREDITS);
   }
 
   inline get_commission(
