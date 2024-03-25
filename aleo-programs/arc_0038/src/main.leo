@@ -5,11 +5,10 @@ program arc_0038.aleo {
   const ADMIN: address = aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru;
   // Address of this program
   const CORE_PROTOCOL: address = aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt;
-  const SHARES_TO_MICROCREDITS: u64 = 1_000u64;
-  const PRECISION_UNSIGNED: u128 = 1_000u128;
+  const SHARES_TO_MICROCREDITS: u64 = 1000u64;
+  const PRECISION_UNSIGNED: u128 = 1000u128;
   const MAX_COMMISSION_RATE: u128 = 500u128;
   const UNBONDING_PERIOD: u32 = 360u32;
-  const MINIMUM_BOND_POOL: u64 = 10_000_000_000u64;
 
   // 0u8 -> Whether the program has been initialized
   mapping is_initialized: u8 => bool;
@@ -34,7 +33,8 @@ program arc_0038.aleo {
   // address -> number of shares held by the delegator with this address
   mapping delegator_shares: address => u64;
 
-  // 0u8 -> balance pending withdrawal in microcredits
+  // 0u8 -> balance pending withdrawal currently unbonding
+  // 1u8 -> balance pending withdrawal owned by the program
   mapping pending_withdrawal: u8 => u64;
 
   /** Unbonding allowed: 0u8 ->
@@ -44,8 +44,8 @@ program arc_0038.aleo {
   mapping current_batch_height: u8 => u32;
 
   struct withdrawal_state {
-    microcredits: u64;
-    claim_block: u32;
+    microcredits: u64,
+    claim_block: u32
   }
 
   // address -> pending withdrawal for the delegator with this address
@@ -69,6 +69,7 @@ program arc_0038.aleo {
     total_shares.set(0u8, 0u64);
     total_balance.set(0u8, 0u64);
     pending_withdrawal.set(0u8, 0u64);
+    pending_withdrawal.set(1u8, 0u64);
     current_batch_height.set(0u8, 0u32);
   }
 
@@ -95,7 +96,7 @@ program arc_0038.aleo {
 
     total_balance.set(0u8, microcredits);
     total_shares.set(0u8, microcredits * SHARES_TO_MICROCREDITS);
-    delegator_shares.set(ADMIN, microcredits * SHARES_TO_MICROCREDITS);
+    delegator_shares.set(ADMIN, microcredits);
   }
 
   inline get_commission(
@@ -133,11 +134,11 @@ program arc_0038.aleo {
   finalize set_commission_percent(new_commission_rate: u128) {
     // Make sure all commission is claimed before changing the rate
     // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
-    let default: withdrawal_state = withdrawal_state {
+    let base: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
-    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits;
+    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits;
     let current_balance: u64 = total_balance.get(0u8);
     let current_shares: u64 = total_shares.get(0u8);
     let rewards: u64 = bonded > current_balance ? bonded - current_balance : 0u64;
@@ -177,19 +178,25 @@ program arc_0038.aleo {
     assert(next_validator);
 
     // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
-    let default: withdrawal_state = withdrawal_state {
+    let base: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
-    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits;
+    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits;
     // Assert that the pool was fully unbonded
     assert_eq(bonded, 0u64);
 
     // Make sure all commission is claimed before unbonding
-    // TODO: Use unbonding amount or pool_balance??
+    let base_unbonding: withdrawal_state = withdrawal_state {
+      microcredits: 0u64,
+      claim_block: 0u32
+    };
+    let unbonding: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base_unbonding).microcredits;
+    let unbonding_withdrawals: u64 = pending_withdrawal.get(0u8);
+    let previously_bonded: u64 = unbonding - unbonding_withdrawals;
     let current_balance: u64 = total_balance.get(0u8);
     let current_shares: u64 = total_shares.get(0u8);
-    let rewards: u64 = bonded > current_balance ? bonded - current_balance : 0u64;
+    let rewards: u64 = previously_bonded > current_balance ? previously_bonded - current_balance : 0u64;
     let commission_rate: u128 = commission_percent.get(0u8);
     let new_commission: u64 = get_commission(rewards as u128, commission_rate);
     current_balance += rewards - new_commission;
@@ -210,6 +217,12 @@ program arc_0038.aleo {
 
   finalize claim_unbond() {
     current_batch_height.remove(0u8);
+    let unbonding_withdrawals: u64 = pending_withdrawal.get(0u8);
+    let already_claimed: u64 = pending_withdrawal.get(1u8);
+    already_claimed += unbonding_withdrawals;
+
+    pending_withdrawal.set(0u8, 0u64);
+    pending_withdrawal.set(1u8, already_claimed);
   }
 
   transition bond_all(public validator_address: address, public amount: u64) {
@@ -220,16 +233,9 @@ program arc_0038.aleo {
   }
 
   finalize bond_all(validator_address: address) {
-    // Simulate call to credits.aleo/unbonding.get_or_use(CORE_PROTOCOL).microcredits;
-    let default: withdrawal_state = withdrawal_state {
-      microcredits: 0u64,
-      claim_block: 0u32
-    };
-    let unbonding_balance: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits;
     let account_balance: u64 = total_balance.get(1u8); // credits.aleo/account.get(CORE_PROTOCOL);
-    let pending_withdrawals: u64 = pending_withdrawal.get(0u8);
-    let remaining_balance: u64 = account_balance + unbonding_balance;
-    assert(remaining_balance >= pending_withdrawals);
+    let pending_withdrawals: u64 = pending_withdrawal.get(1u8);
+    assert(account_balance >= pending_withdrawals);
 
     // Set validator
     let has_next_validator: bool = validator.contains(1u8);
@@ -248,11 +254,11 @@ program arc_0038.aleo {
   finalize claim_commission() {
     // Distribute shares for new commission
     // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
-    let default: withdrawal_state = withdrawal_state {
+    let base: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
-    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits;
+    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits;
     let current_balance: u64 = total_balance.get(0u8);
     let current_shares: u64 = total_shares.get(0u8);
     let rewards: u64 = bonded > current_balance ? bonded - current_balance : 0u64;
@@ -284,11 +290,11 @@ program arc_0038.aleo {
   ) {
     // Distribute shares for new commission
     // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
-    let default: withdrawal_state = withdrawal_state {
+    let base: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
-    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits; // credits.aleo/bonded.get(CORE_PROTOCOL).microcredits;
+    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits; // credits.aleo/bonded.get(CORE_PROTOCOL).microcredits;
     let current_balance: u64 = total_balance.get(0u8);
     let current_shares: u64 = total_shares.get(0u8);
     let rewards: u64 = bonded > current_balance ? bonded - current_balance : 0u64;
@@ -344,11 +350,11 @@ program arc_0038.aleo {
 
     // Distribute shares for new commission
     // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
-    let default: withdrawal_state = withdrawal_state {
+    let base: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
-    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits; // credits.aleo/bonded.get(CORE_PROTOCOL).microcredits;
+    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits; // credits.aleo/bonded.get(CORE_PROTOCOL).microcredits;
     // Add back the withdrawal amount to appropriately calculate rewards before the withdrawal
     bonded += total_withdrawal;
     let current_balance: u64 = total_balance.get(0u8);
@@ -381,8 +387,8 @@ program arc_0038.aleo {
     withdrawals.set(owner, withdrawal);
 
     // Update pending withdrawal
-    let currently_pending: u64 = pending_withdrawal.get(0u8);
-    pending_withdrawal.set(0u8, currently_pending + total_withdrawal);
+    let currently_unbonding: u64 = pending_withdrawal.get(0u8);
+    pending_withdrawal.set(0u8, currently_unbonding + total_withdrawal);
 
     // Update total balance
     total_balance.set(0u8, current_balance - total_withdrawal);
@@ -414,11 +420,11 @@ program arc_0038.aleo {
     assert_eq(currently_withdrawing, false);
 
     // Simulate call to credits.aleo/unbonding.get_or_use(CORE_PROTOCOL).microcredits;
-    let default: withdrawal_state = withdrawal_state {
+    let base: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
-    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, default).microcredits;
+    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits;
     assert_eq(bonded, 0u64);
 
     // Assert that they have enough to withdraw
@@ -439,8 +445,8 @@ program arc_0038.aleo {
     withdrawals.set(owner, withdrawal);
 
     // Update pending withdrawal
-    let currently_pending: u64 = pending_withdrawal.get(0u8);
-    pending_withdrawal.set(0u8, currently_pending + total_withdrawal);
+    let currently_pending: u64 = pending_withdrawal.get(1u8);
+    pending_withdrawal.set(1u8, currently_pending + total_withdrawal);
 
     // Update total balance
     total_balance.set(0u8, current_balance - total_withdrawal);
@@ -467,7 +473,7 @@ program arc_0038.aleo {
     withdrawals.remove(owner);
 
     // Update pending withdrawal
-    let currently_pending: u64 = pending_withdrawal.get(0u8);
-    pending_withdrawal.set(0u8, currently_pending - amount);
+    let currently_pending: u64 = pending_withdrawal.get(1u8);
+    pending_withdrawal.set(1u8, currently_pending - amount);
   }
 }
