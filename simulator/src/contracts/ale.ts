@@ -288,7 +288,7 @@ export class aleProgram {
   ) {
     assert(this.caller === claim_record.owner);
     
-    this.credits.caller = "contract";
+    this.credits.caller = "ale.aleo";
     let credits_record: credits = this.credits.transfer_public_to_private(claim_record.owner, claim_record.amount);
     
     this.finalize_claim_credits(claim_record.amount, claim_record.min_claim_height);

@@ -46,7 +46,7 @@ export class delegator3Program {
     amount: bigint,
   ) {
     assert(this.caller === this.CORE_PROTOCOL);
-    this.credits.caller = "contract";
+    this.credits.caller = "delegator3.aleo";
     this.credits.transfer_public(this.CORE_PROTOCOL, amount);
     }
     
@@ -54,7 +54,7 @@ export class delegator3Program {
     amount: bigint,
   ) {
     assert(this.caller === this.CORE_PROTOCOL);
-    this.credits.caller = "contract";
+    this.credits.caller = "delegator3.aleo";
     this.credits.transfer_public(this.ALE, amount);
     }
     
@@ -66,7 +66,7 @@ export class delegator3Program {
     amount: bigint,
   ) {
     assert(this.caller === this.CORE_PROTOCOL);
-    this.credits.caller = "contract";
+    this.credits.caller = "delegator3.aleo";
     this.credits.bond_public(validator, amount);
     
     return this.finalize_bond(validator);
@@ -85,7 +85,7 @@ export class delegator3Program {
     amount: bigint,
   ) {
     assert(this.caller === this.CORE_PROTOCOL);
-    this.credits.caller = "contract";
+    this.credits.caller = "delegator3.aleo";
     this.credits.unbond_public(amount);
     
     return this.finalize_unbond(amount);
@@ -102,7 +102,7 @@ export class delegator3Program {
   claim_unbond(
   ) {
     assert(this.caller === this.CORE_PROTOCOL);
-    this.credits.caller = "contract";
+    this.credits.caller = "delegator3.aleo";
     this.credits.claim_unbond_public();
     
     return this.finalize_claim_unbond();

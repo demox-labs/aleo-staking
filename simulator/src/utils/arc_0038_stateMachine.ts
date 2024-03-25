@@ -94,6 +94,8 @@ const initializeEvent: blockEvent = {
     assert(program.credits.bonded.get(program.CORE_PROTOCOL)!.microcredits === program.MINIMUM_BOND_POOL, 'Bonded state not set correctly');
     assert(program.total_balance.get(BigInt(0)) === program.MINIMUM_BOND_POOL, 'Total balance not set correctly');
     assert(program.total_shares.get(BigInt(0)) === program.MINIMUM_BOND_POOL * program.SHARES_TO_MICROCREDITS, 'Total shares not set correctly');
+    let adminShares = program.delegator_shares.get(program.ADMIN);
+    console.log('admin shares: ' + adminShares);
     assert(program.delegator_shares.get(program.ADMIN) === program.MINIMUM_BOND_POOL * program.SHARES_TO_MICROCREDITS, 'Admin shares not set correctly');
   },
 };
@@ -124,7 +126,7 @@ const depositEvent: blockEvent = {
 };
 
 const bondAllEvent: blockEvent = {
-  height: BigInt(6),
+  height: BigInt(2),
   action: (program: arc_0038Program) => {
     console.log('--bond_all--');
     program.caller = 'user0';
@@ -136,7 +138,7 @@ const bondAllEvent: blockEvent = {
 };
 
 const withdrawEvent: blockEvent = {
-  height: BigInt(5),
+  height: BigInt(2),
   action: (program: arc_0038Program) => {
     console.log('--withdraw--');
     program.caller = 'user0';
