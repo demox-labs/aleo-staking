@@ -314,7 +314,7 @@ finalize bond_all:
 function bond_deposits:
     input r0 as address.public;
     input r1 as u64.public;
-    call credits.aleo/bond_public r0 r1 into r2;
+    call credits.aleo/bond_public r0 aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt r1 into r2;
     async bond_deposits r2 r0 r1 into r3;
     output r3 as arc_0038.aleo/bond_deposits.future;
 
