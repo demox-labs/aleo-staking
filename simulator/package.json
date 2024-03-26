@@ -11,7 +11,7 @@
     "clean": "rm -rf node_modules",
     "get-program-addresses": "tsc ./util/getProgramAddresses.ts && node ./util/getPromgramAddresses.js",
     "convert-leo": "yarn tsx ./util/convertAll.ts",
-    "test-arc0038": "yarn tsx ./src/utils/arc_0038_stateMachine.ts",
+    "test-arc0038": "yarn tsx ./util/test-arc0038.ts",
     "calculate-new-shares": "yarn tsx ./src/utils/calculateNewShares.ts"
   },
   "dependencies": {

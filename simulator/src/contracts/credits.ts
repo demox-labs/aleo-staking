@@ -1,5 +1,8 @@
 import assert from 'assert';
 
+export const MINIMUM_BOND_POOL = BigInt(10000000000);
+export const MICROCREDITS_TO_CREDITS = 1000000;
+
 export interface credits {
   owner: string;
   microcredits: bigint;
@@ -95,6 +98,8 @@ export class creditsProgram {
   ) {
     const bonded: bond_state = this.bonded.get(delegator) || { microcredits: BigInt(0), validator: validator };
     assert(bonded.validator == validator, "bonded to different validator");
+    assert(bonded.microcredits !== BigInt(0) || amount >= BigInt(MINIMUM_BOND_POOL), "minimum bond amount not met");
+    //assert(bonded.microcredits === BigInt(0) || amount >= BigInt(1 * MICROCREDITS_TO_CREDITS), "must bond at least 1 credit");
 
     bonded.microcredits += amount;
     this.bonded.set(delegator, bonded);
@@ -114,6 +119,16 @@ export class creditsProgram {
     const bonded: bond_state | undefined = this.bonded.get(delegator);
     assert(bonded !== undefined, "not bonded");
     assert(bonded!.microcredits >= amount, "insufficient credits to unbond");
+
+    let unbondAmount = amount;
+    const newAmount: bigint = bonded!.microcredits - amount;
+    if (newAmount < BigInt(MINIMUM_BOND_POOL)) {
+      unbondAmount = bonded!.microcredits;
+      this.bonded.delete(delegator);
+    } else {
+      bonded!.microcredits = newAmount;
+      this.bonded.set(delegator, bonded!);
+    }
 
     const unbonding: unbond_state = this.unbonding.get(delegator) || { microcredits: BigInt(0), height: this.block.height };
     unbonding.microcredits += amount;

@@ -394,7 +394,7 @@ const replaceMapping = (leoLine: string): string => {
 
 const removeInterfaceAssignment = (leoLine: string): string => {
   // Regular expression to match and capture parts of the line
-  const regex = /(let\s+\w+\s*:\s*\w+\s*=\s*)\w+\s*\{/;
+  const regex = /(let\s+\w+\s*:\s*[\w\.\/]+\s*=\s*)[\w\.\/]+\s*\{/;
   if (leoLine.includes("let")) {
     leoLine = leoLine.replace(regex, '$1{');
   }

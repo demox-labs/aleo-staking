@@ -17,7 +17,7 @@
     "typeRoots": [ "node_modules/@types" ],
     "outDir": "dist"
   },
-  "include": ["src", "util"],
+  "include": ["src", "util", "__tests__"],
   "exclude": ["node_modules"],
   "ts-node": {
     // Tell ts-node CLI to install the --loader automatically, explained below
