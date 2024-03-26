@@ -27,6 +27,9 @@ program arc_0038.aleo {
   // 0u8 -> total balance of microcredits pooled
   mapping total_balance: u8 => u64;
 
+  // 0u8 -> balance of deposits that have not been bonded, updated when calling "bond_all"
+  mapping pending_deposits: u8 => u64;
+
   // 0u8 -> total pool of delegator shares
   mapping total_shares: u8 => u64;
 
@@ -68,6 +71,7 @@ program arc_0038.aleo {
     validator.set(0u8, validator_address);
     total_shares.set(0u8, 0u64);
     total_balance.set(0u8, 0u64);
+    pending_deposits.set(0u8, 0u64);
     pending_withdrawal.set(0u8, 0u64);
     pending_withdrawal.set(1u8, 0u64);
     current_batch_height.set(0u8, 0u32);
@@ -112,15 +116,16 @@ program arc_0038.aleo {
     return get_commission(rewards, commission_rate);
   }
 
-  inline calculate_new_shares(balance: u128, deposit: u128, shares: u128) -> u64 {
-    let new_total_shares: u128 = (shares * PRECISION_UNSIGNED) * (balance + deposit) / (balance * PRECISION_UNSIGNED);
+  inline calculate_new_shares(bonded_balance: u128, pending_deposit_pool: u128, deposit: u128, shares: u128) -> u64 {
+    let full_balance: u128 = bonded_balance + pending_deposit_pool;
+    let new_total_shares: u128 = (shares * PRECISION_UNSIGNED) * (full_balance + deposit) / (full_balance * PRECISION_UNSIGNED);
     let diff: u128 = new_total_shares - shares;
     let shares_to_mint: u64 = diff as u64;
     return shares_to_mint;
   }
 
-  transition calculate_new_shares_test(balance: u128, deposit: u128, shares: u128) -> u64 {
-    return calculate_new_shares(balance, deposit, shares);
+  transition calculate_new_shares_test(bonded_balance: u128, pending_deposit_pool: u128, deposit: u128, shares: u128) -> u64 {
+    return calculate_new_shares(bonded_balance, pending_deposit_pool, deposit, shares);
   }
 
   transition set_commission_percent(public new_commission_rate: u128) {
@@ -146,7 +151,8 @@ program arc_0038.aleo {
     let new_commission: u64 = get_commission(rewards as u128, commission_rate);
     current_balance += rewards - new_commission;
 
-    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, new_commission as u128, current_shares as u128);
+    let pending_deposit_pool: u64 = pending_deposits.get(0u8);
+    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, pending_deposit_pool as u128, new_commission as u128, current_shares as u128);
     let current_commission: u64 = delegator_shares.get_or_use(ADMIN, 0u64);
     delegator_shares.set(ADMIN, current_commission + new_commission_shares);
 
@@ -201,7 +207,8 @@ program arc_0038.aleo {
     let new_commission: u64 = get_commission(rewards as u128, commission_rate);
     current_balance += rewards - new_commission;
 
-    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, new_commission as u128, current_shares as u128);
+    let pending_deposit_pool: u64 = pending_deposits.get(0u8);
+    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, pending_deposit_pool as u128, new_commission as u128, current_shares as u128);
     let current_commission: u64 = delegator_shares.get_or_use(ADMIN, 0u64);
     delegator_shares.set(ADMIN, current_commission + new_commission_shares);
 
@@ -229,21 +236,56 @@ program arc_0038.aleo {
     // Call will fail if there is any balance still bonded to another validator
     credits.aleo/bond_public(validator_address, amount);
 
-    return then finalize(validator_address);
+    return then finalize(validator_address, amount);
   }
 
-  finalize bond_all(validator_address: address) {
+  finalize bond_all(validator_address: address, amount: u64) {
     let account_balance: u64 = total_balance.get(1u8); // credits.aleo/account.get(CORE_PROTOCOL);
     let pending_withdrawals: u64 = pending_withdrawal.get(1u8);
     assert(account_balance >= pending_withdrawals);
 
-    // Set validator
-    let has_next_validator: bool = validator.contains(1u8);
-    let current_validator: address = has_next_validator ? validator.get(1u8) : validator.get(0u8);
-    assert_eq(validator_address, current_validator);
+    // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
+    let base: withdrawal_state = withdrawal_state {
+      microcredits: 0u64,
+      claim_block: 0u32
+    };
+    let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits;
+    let current_balance: u64 = total_balance.get(0u8);
+    let pending_deposit_balance: u64 = pending_deposits.get(0u8);
 
-    validator.set(0u8, current_validator);
+    pending_deposit_balance = pending_deposit_balance + current_balance - bonded;
+    pending_deposits.set(0u8, pending_deposit_balance);
+    total_balance.set(0u8, bonded);
+
+    // Set validator
+    let next_validator: address = validator.get(1u8);
+    assert_eq(validator_address, next_validator);
+
+    validator.set(0u8, next_validator);
     validator.remove(1u8);
+  }
+
+  transition bond_deposits(public validator_address: address, public amount: u64) {
+    // Call will fail if there is any balance still bonded to another validator
+    credits.aleo/bond_public(validator_address, amount);
+
+    return then finalize(validator_address, amount);
+  }
+
+  finalize bond_deposits(validator_address: address, amount: u64) {
+    let account_balance: u64 = total_balance.get(1u8); // credits.aleo/account.get(CORE_PROTOCOL);
+    let pending_withdrawals: u64 = pending_withdrawal.get(1u8);
+    assert(account_balance >= pending_withdrawals);
+
+    let current_balance: u64 = total_balance.get(0u8);
+    let pending_deposit_balance: u64 = pending_deposits.get(0u8);
+
+    pending_deposit_balance = pending_deposit_balance - amount;
+    pending_deposits.set(0u8, pending_deposit_balance);
+    total_balance.set(0u8, current_balance + amount);
+
+    let has_next_validator: bool = validator.contains(1u8);
+    assert_eq(has_next_validator, false);
   }
 
   transition claim_commission() {
@@ -266,7 +308,8 @@ program arc_0038.aleo {
     let new_commission: u64 = get_commission(rewards as u128, commission_rate);
     current_balance += rewards - new_commission;
 
-    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, new_commission as u128, current_shares as u128);
+    let pending_deposit_pool: u64 = pending_deposits.get(0u8);
+    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, pending_deposit_pool as u128, new_commission as u128, current_shares as u128);
     let current_commission: u64 = delegator_shares.get_or_use(ADMIN, 0u64);
     delegator_shares.set(ADMIN, current_commission + new_commission_shares);
 
@@ -300,15 +343,18 @@ program arc_0038.aleo {
     let new_commission: u64 = get_commission(rewards as u128, commission_rate);
     current_balance += rewards - new_commission;
 
-    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, new_commission as u128, current_shares as u128);
+    let pending_deposit_pool: u64 = pending_deposits.get(0u8);
+    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, pending_deposit_pool as u128, new_commission as u128, current_shares as u128);
     let current_commission: u64 = delegator_shares.get_or_use(ADMIN, 0u64);
     delegator_shares.set(ADMIN, current_commission + new_commission_shares);
 
     current_shares += new_commission_shares;
     current_balance += new_commission;
+    // Update total balance
+    total_balance.set(0u8, current_balance);
 
     // Calculate mint for deposit
-    let new_shares: u64 = calculate_new_shares(current_balance as u128, microcredits as u128, current_shares as u128);
+    let new_shares: u64 = calculate_new_shares(current_balance as u128, pending_deposit_pool as u128, microcredits as u128, current_shares as u128);
 
     // Ensure mint amount is valid
     assert(new_shares >= 1u64);
@@ -320,8 +366,9 @@ program arc_0038.aleo {
     // Update total shares
     total_shares.set(0u8, current_shares + new_shares);
 
-    // Update total_balance
-    total_balance.set(0u8, current_balance + microcredits);
+    // Update pending_deposits
+    let pending: u64 = pending_deposits.get(0u8);
+    pending_deposits.set(0u8, pending + microcredits);
   }
 
   transition withdraw_public(public withdrawal_shares: u64, public total_withdrawal: u64) {
@@ -362,15 +409,19 @@ program arc_0038.aleo {
     let new_commission: u64 = get_commission(rewards as u128, commission_rate);
     current_balance += rewards - new_commission;
 
-    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, new_commission as u128, current_shares as u128);
+    let pending_deposit_pool: u64 = pending_deposits.get(0u8);
+    let new_commission_shares: u64 = calculate_new_shares(current_balance as u128, pending_deposit_pool as u128, new_commission as u128, current_shares as u128);
     let current_commission: u64 = delegator_shares.get_or_use(ADMIN, 0u64);
     delegator_shares.set(ADMIN, current_commission + new_commission_shares);
 
     current_shares += new_commission_shares;
     current_balance += new_commission;
 
+    // Calculate full pool size
+    let full_pool: u128 = current_balance as u128 + pending_deposit_pool as u128;
+
     // Calculate withdrawal amount
-    let withdrawal_calculation: u128 = (withdrawal_shares as u128 * current_balance as u128 * PRECISION_UNSIGNED) / (current_shares as u128 * PRECISION_UNSIGNED);
+    let withdrawal_calculation: u128 = (withdrawal_shares as u128 * full_pool as u128 * PRECISION_UNSIGNED) / (current_shares as u128 * PRECISION_UNSIGNED);
 
     // If the calculated withdrawal amount is greater than total_withdrawal, the excess will stay in the pool
     assert(withdrawal_calculation >= total_withdrawal as u128);
@@ -439,8 +490,10 @@ program arc_0038.aleo {
 
     // Calculate withdrawal amount
     let current_balance: u64 = total_balance.get(0u8);
+    let pending_deposit_pool: u64 = pending_deposits.get(0u8);
+    let full_pool: u128 = current_balance as u128 + pending_deposit_pool as u128;
     let current_shares: u64 = total_shares.get(0u8);
-    let withdrawal_calculation: u128 = (withdrawal_shares as u128 * current_balance as u128 * PRECISION_UNSIGNED) / (current_shares as u128 * PRECISION_UNSIGNED);
+    let withdrawal_calculation: u128 = (withdrawal_shares as u128 * full_pool * PRECISION_UNSIGNED) / (current_shares as u128 * PRECISION_UNSIGNED);
     let total_withdrawal: u64 = withdrawal_calculation as u64;
 
     // Update withdrawals mappings
