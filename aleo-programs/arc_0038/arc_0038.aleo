@@ -100,7 +100,7 @@ function initial_deposit:
     output r4 as arc_0038.aleo/initial_deposit.future;
 
 finalize initial_deposit:
-    input r0 as credits.aleo/transfer_public.future;
+    input r0 as credits.aleo/transfer_public_as_signer.future;
     input r1 as credits.aleo/bond_public.future;
     input r2 as u64.public;
     await r0;
@@ -324,7 +324,7 @@ function deposit_public:
     output r2 as arc_0038.aleo/deposit_public.future;
 
 finalize deposit_public:
-    input r0 as credits.aleo/transfer_public.future;
+    input r0 as credits.aleo/transfer_public_as_signer.future;
     input r1 as address.public;
     input r2 as u64.public;
     await r0;
