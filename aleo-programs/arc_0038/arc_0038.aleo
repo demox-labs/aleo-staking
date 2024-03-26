@@ -91,18 +91,16 @@ finalize initialize:
 
 
 function initial_deposit:
-    input r0 as credits.aleo/credits.record;
-    input r1 as u64.public;
-    input r2 as address.public;
+    input r0 as u64.public;
+    input r1 as address.public;
     assert.eq self.caller aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru;
-    call credits.aleo/transfer_private_to_public r0 aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt r1 into r3 r4;
-    call credits.aleo/bond_public r2 r1 into r5;
-    async initial_deposit r4 r5 r1 into r6;
-    output r3 as credits.aleo/credits.record;
-    output r6 as arc_0038.aleo/initial_deposit.future;
+    call credits.aleo/transfer_public_as_signer aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt r0 into r2;
+    call credits.aleo/bond_public r1 r0 into r3;
+    async initial_deposit r2 r3 r0 into r4;
+    output r4 as arc_0038.aleo/initial_deposit.future;
 
 finalize initial_deposit:
-    input r0 as credits.aleo/transfer_private_to_public.future;
+    input r0 as credits.aleo/transfer_public.future;
     input r1 as credits.aleo/bond_public.future;
     input r2 as u64.public;
     await r0;
@@ -114,10 +112,30 @@ finalize initial_deposit:
     assert.eq r4 0u64;
     assert.eq r5 0u64;
     set r2 into total_balance[0u8];
-    mul r2 1_000u64 into r6;
+    mul r2 1000u64 into r6;
     set r6 into total_shares[0u8];
     set r2 into delegator_shares[aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru];
 
+function get_commission_test:
+    input r0 as u128.private;
+    input r1 as u128.private;
+    mul r0 r1 into r2;
+    div r2 1000u128 into r3;
+    cast r3 into r4 as u64;
+    output r4 as u64.private;
+
+function calculate_new_shares_test:
+    input r0 as u128.private;
+    input r1 as u128.private;
+    input r2 as u128.private;
+    mul r2 1000u128 into r3;
+    add r0 r1 into r4;
+    mul r3 r4 into r5;
+    mul r0 1000u128 into r6;
+    div r5 r6 into r7;
+    sub r7 r2 into r8;
+    cast r8 into r9 as u64;
+    output r9 as u64.private;
 
 function set_commission_percent:
     input r0 as u128.public;
@@ -164,7 +182,6 @@ finalize set_commission_percent:
     set r28 into total_balance[0u8];
     set r0 into commission_percent[0u8];
 
-
 function set_next_validator:
     input r0 as address.public;
     assert.eq self.caller aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru;
@@ -174,7 +191,6 @@ function set_next_validator:
 finalize set_next_validator:
     input r0 as address.public;
     set r0 into validator[1u8];
-
 
 function unbond_all:
     input r0 as u64.public;
@@ -203,7 +219,7 @@ finalize unbond_all:
     get commission_percent[0u8] into r14;
     cast r13 into r15 as u128;
     mul r15 r14 into r16;
-    div r16 1_000u128 into r17;
+    div r16 1000u128 into r17;
     cast r17 into r18 as u64;
     sub r13 r18 into r19;
     add r9 r19 into r20;
@@ -225,7 +241,6 @@ finalize unbond_all:
     add r20 r18 into r34;
     set r34 into total_balance[0u8];
 
-
 function claim_unbond:
     call credits.aleo/claim_unbond_public into r0;
     async claim_unbond r0 into r1;
@@ -240,7 +255,6 @@ finalize claim_unbond:
     add r2 r1 into r3;
     set 0u64 into pending_withdrawal[0u8];
     set r3 into pending_withdrawal[1u8];
-
 
 function bond_all:
     input r0 as address.public;
@@ -264,7 +278,6 @@ finalize bond_all:
     assert.eq r1 r8;
     set r8 into validator[0u8];
     remove validator[1u8];
-
 
 function claim_commission:
     assert.eq self.caller aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru;
@@ -304,17 +317,14 @@ finalize claim_commission:
     add r13 r11 into r27;
     set r27 into total_balance[0u8];
 
-
 function deposit_public:
-    input r0 as credits.aleo/credits.record;
-    input r1 as u64.public;
-    call credits.aleo/transfer_private_to_public r0 aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt r1 into r2 r3;
-    async deposit_public r3 self.caller r1 into r4;
-    output r2 as credits.aleo/credits.record;
-    output r4 as arc_0038.aleo/deposit_public.future;
+    input r0 as u64.public;
+    call credits.aleo/transfer_public_as_signer aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt r0 into r1;
+    async deposit_public r1 self.caller r0 into r2;
+    output r2 as arc_0038.aleo/deposit_public.future;
 
 finalize deposit_public:
-    input r0 as credits.aleo/transfer_private_to_public.future;
+    input r0 as credits.aleo/transfer_public.future;
     input r1 as address.public;
     input r2 as u64.public;
     await r0;
@@ -366,9 +376,6 @@ finalize deposit_public:
     set r44 into total_shares[0u8];
     add r30 r2 into r45;
     set r45 into total_balance[0u8];
-
-
-
 
 function withdraw_public:
     input r0 as u64.public;
@@ -450,6 +457,14 @@ finalize withdraw_public:
     set r58 into total_shares[0u8];
     sub r10 r1 into r59;
     set r59 into delegator_shares[r3];
+
+
+function get_new_batch_height_test:
+    input r0 as u32.private;
+    div r0 1000u32 into r1;
+    mul r1 1000u32 into r2;
+    add r2 1000u32 into r3;
+    output r3 as u32.private;
 
 
 function create_withdraw_claim:

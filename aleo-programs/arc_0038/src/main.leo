@@ -74,16 +74,15 @@ program arc_0038.aleo {
   }
 
   transition initial_deposit(
-    public input_record: credits.aleo/credits,
     public microcredits: u64,
     public validator_address: address
-  ) -> credits.aleo/credits {
+  ) {
     assert_eq(self.caller, ADMIN);
-    // Must be a credits record because credits.aleo uses self.caller for transfers
-    let updated_record: credits.aleo/credits = credits.aleo/transfer_private_to_public(input_record, CORE_PROTOCOL, microcredits);
+    // credits.aleo/transfer_public_as_signer(CORE_PROTOCOL, microcredits);
+    credits.aleo/transfer_public(CORE_PROTOCOL, microcredits);
     credits.aleo/bond_public(validator_address, microcredits);
 
-    return (updated_record) then finalize(microcredits);
+    return then finalize(microcredits);
   }
 
   finalize initial_deposit(microcredits: u64) {
@@ -275,13 +274,11 @@ program arc_0038.aleo {
   }
 
   transition deposit_public(
-    public input_record: credits.aleo/credits,
     public microcredits: u64
-  ) -> credits.aleo/credits {
-    // Must be a credits record because credits.aleo uses self.caller for transfers
-    let updated_record: credits.aleo/credits = credits.aleo/transfer_private_to_public(input_record, CORE_PROTOCOL, microcredits);
-
-    return (updated_record) then finalize(self.caller, microcredits);
+  ) {
+    // credits.aleo/transfer_public_as_signer(CORE_PROTOCOL, microcredits);
+    credits.aleo/transfer_public(CORE_PROTOCOL, microcredits);
+    return then finalize(self.caller, microcredits);
   }
 
   finalize deposit_public(
