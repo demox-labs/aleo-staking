@@ -94,8 +94,9 @@ program arc_0038.aleo {
     assert_eq(shares, 0u64);
 
     total_balance.set(0u8, microcredits);
-    total_shares.set(0u8, microcredits * SHARES_TO_MICROCREDITS);
-    delegator_shares.set(ADMIN, microcredits);
+    shares = microcredits * SHARES_TO_MICROCREDITS;
+    total_shares.set(0u8, shares);
+    delegator_shares.set(ADMIN, shares);
   }
 
   inline get_commission(
@@ -416,13 +417,21 @@ program arc_0038.aleo {
     let currently_withdrawing: bool = withdrawals.contains(owner);
     assert_eq(currently_withdrawing, false);
 
-    // Simulate call to credits.aleo/unbonding.get_or_use(CORE_PROTOCOL).microcredits;
+    // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
     let base: withdrawal_state = withdrawal_state {
       microcredits: 0u64,
       claim_block: 0u32
     };
     let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits;
     assert_eq(bonded, 0u64);
+
+    // Simulate call to credits.aleo/unbonding.get_or_use(CORE_PROTOCOL).microcredits;
+    let base_unbonding: withdrawal_state = withdrawal_state {
+      microcredits: 0u64,
+      claim_block: 0u32
+    };
+    let unbonding: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base_unbonding).microcredits;
+    assert_eq(unbonding, 0u64);
 
     // Assert that they have enough to withdraw
     let delegator_balance: u64 = delegator_shares.get(owner);

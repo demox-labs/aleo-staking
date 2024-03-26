@@ -95,7 +95,7 @@ function initial_deposit:
     input r1 as address.public;
     assert.eq self.caller aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru;
     call credits.aleo/transfer_public_as_signer aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt r0 into r2;
-    call credits.aleo/bond_public r1 r0 into r3;
+    call credits.aleo/bond_public r1 aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt r0 into r3;
     async initial_deposit r2 r3 r0 into r4;
     output r4 as arc_0038.aleo/initial_deposit.future;
 
@@ -114,7 +114,10 @@ finalize initial_deposit:
     set r2 into total_balance[0u8];
     mul r2 1000u64 into r6;
     set r6 into total_shares[0u8];
-    set r2 into delegator_shares[aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru];
+    set r6 into delegator_shares[aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru];
+
+
+
 
 function get_commission_test:
     input r0 as u128.private;
@@ -123,6 +126,9 @@ function get_commission_test:
     div r2 1000u128 into r3;
     cast r3 into r4 as u64;
     output r4 as u64.private;
+
+
+
 
 function calculate_new_shares_test:
     input r0 as u128.private;
@@ -136,6 +142,7 @@ function calculate_new_shares_test:
     sub r7 r2 into r8;
     cast r8 into r9 as u64;
     output r9 as u64.private;
+
 
 function set_commission_percent:
     input r0 as u128.public;
@@ -182,6 +189,7 @@ finalize set_commission_percent:
     set r28 into total_balance[0u8];
     set r0 into commission_percent[0u8];
 
+
 function set_next_validator:
     input r0 as address.public;
     assert.eq self.caller aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru;
@@ -191,6 +199,7 @@ function set_next_validator:
 finalize set_next_validator:
     input r0 as address.public;
     set r0 into validator[1u8];
+
 
 function unbond_all:
     input r0 as u64.public;
@@ -241,6 +250,7 @@ finalize unbond_all:
     add r20 r18 into r34;
     set r34 into total_balance[0u8];
 
+
 function claim_unbond:
     call credits.aleo/claim_unbond_public into r0;
     async claim_unbond r0 into r1;
@@ -256,10 +266,11 @@ finalize claim_unbond:
     set 0u64 into pending_withdrawal[0u8];
     set r3 into pending_withdrawal[1u8];
 
+
 function bond_all:
     input r0 as address.public;
     input r1 as u64.public;
-    call credits.aleo/bond_public r0 r1 into r2;
+    call credits.aleo/bond_public r0 aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt r1 into r2;
     async bond_all r2 r0 into r3;
     output r3 as arc_0038.aleo/bond_all.future;
 
@@ -278,6 +289,7 @@ finalize bond_all:
     assert.eq r1 r8;
     set r8 into validator[0u8];
     remove validator[1u8];
+
 
 function claim_commission:
     assert.eq self.caller aleo1kf3dgrz9lqyklz8kqfy0hpxxyt78qfuzshuhccl02a5x43x6nqpsaapqru;
@@ -316,6 +328,7 @@ finalize claim_commission:
     set r26 into total_shares[0u8];
     add r13 r11 into r27;
     set r27 into total_balance[0u8];
+
 
 function deposit_public:
     input r0 as u64.public;
@@ -376,6 +389,9 @@ finalize deposit_public:
     set r44 into total_shares[0u8];
     add r30 r2 into r45;
     set r45 into total_balance[0u8];
+
+
+
 
 function withdraw_public:
     input r0 as u64.public;
@@ -480,30 +496,33 @@ finalize create_withdraw_claim:
     cast aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8 0u64 into r3 as bond_state;
     get.or_use credits.aleo/bonded[aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt] r3 into r4;
     assert.eq r4.microcredits 0u64;
-    get delegator_shares[r1] into r5;
-    gte r5 r0 into r6;
-    assert.eq r6 true;
-    get total_balance[0u8] into r7;
-    get total_shares[0u8] into r8;
-    cast r0 into r9 as u128;
-    cast r7 into r10 as u128;
-    mul r9 r10 into r11;
-    mul r11 1000u128 into r12;
-    cast r8 into r13 as u128;
+    cast 0u64 0u32 into r5 as unbond_state;
+    get.or_use credits.aleo/unbonding[aleo1j0zju7f0fpgv98gulyywtkxk6jca99l6425uqhnd5kccu4jc2grstjx0mt] r5 into r6;
+    assert.eq r6.microcredits 0u64;
+    get delegator_shares[r1] into r7;
+    gte r7 r0 into r8;
+    assert.eq r8 true;
+    get total_balance[0u8] into r9;
+    get total_shares[0u8] into r10;
+    cast r0 into r11 as u128;
+    cast r9 into r12 as u128;
+    mul r11 r12 into r13;
     mul r13 1000u128 into r14;
-    div r12 r14 into r15;
-    cast r15 into r16 as u64;
-    cast r16 block.height into r17 as withdrawal_state;
-    set r17 into withdrawals[r1];
-    get pending_withdrawal[1u8] into r18;
-    add r18 r16 into r19;
-    set r19 into pending_withdrawal[1u8];
-    sub r7 r16 into r20;
-    set r20 into total_balance[0u8];
-    sub r8 r0 into r21;
-    set r21 into total_shares[0u8];
-    sub r5 r0 into r22;
-    set r22 into delegator_shares[r1];
+    cast r10 into r15 as u128;
+    mul r15 1000u128 into r16;
+    div r14 r16 into r17;
+    cast r17 into r18 as u64;
+    cast r18 block.height into r19 as withdrawal_state;
+    set r19 into withdrawals[r1];
+    get pending_withdrawal[1u8] into r20;
+    add r20 r18 into r21;
+    set r21 into pending_withdrawal[1u8];
+    sub r9 r18 into r22;
+    set r22 into total_balance[0u8];
+    sub r10 r0 into r23;
+    set r23 into total_shares[0u8];
+    sub r7 r0 into r24;
+    set r24 into delegator_shares[r1];
 
 
 function claim_withdrawal_public:
