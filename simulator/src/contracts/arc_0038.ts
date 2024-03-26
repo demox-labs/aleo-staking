@@ -367,26 +367,26 @@ export class arc_0038Program {
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
     let commission_rate: bigint = this.commission_percent.get(BigInt("0"))!;
     let new_commission: bigint = this.inline_get_commission(rewards, commission_rate);
-    console.log('current_balance: ' + current_balance.toLocaleString());
-    console.log('current_shares: ' + current_shares.toLocaleString());
+    //console.log('current_balance: ' + current_balance.toLocaleString());
+    //console.log('current_shares: ' + current_shares.toLocaleString());
     current_balance += rewards - new_commission;
-    console.log('current_balance: ' + current_balance.toLocaleString());
+    //console.log('current_balance: ' + current_balance.toLocaleString());
 
     let new_commission_shares: bigint = this.inline_calculate_new_shares(current_balance, new_commission, current_shares);
     let current_commission: bigint = this.delegator_shares.get(this.ADMIN) || BigInt("0");
     this.delegator_shares.set(this.ADMIN, current_commission + new_commission_shares);
 
-    console.log('admin_shares: ' + this.delegator_shares.get(this.ADMIN)!.toLocaleString());
+    //console.log('admin_shares: ' + this.delegator_shares.get(this.ADMIN)!.toLocaleString());
 
     current_shares += new_commission_shares;
     current_balance += new_commission;
-    console.log('current_balance: ' + current_balance.toLocaleString());
+    //console.log('current_balance: ' + current_balance.toLocaleString());
 
     // Calculate mint for deposit
     let new_shares: bigint = this.inline_calculate_new_shares(current_balance, microcredits, current_shares);
 
-    console.log('new shares: ' + new_shares.toLocaleString());
-    console.log('new total shares: ' + (current_shares + new_shares).toLocaleString());
+    //console.log('new shares: ' + new_shares.toLocaleString());
+    //console.log('new total shares: ' + (current_shares + new_shares).toLocaleString());
 
     // Ensure mint amount is valid
     assert(new_shares >= BigInt("1"));
@@ -444,14 +444,14 @@ export class arc_0038Program {
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
     let current_shares: bigint = this.total_shares.get(BigInt("0"))!;
     let rewards: bigint = bonded > current_balance ? bonded - current_balance : BigInt("0");
-    console.log('rewards: ' + rewards.toLocaleString());
+    //console.log('rewards: ' + rewards.toLocaleString());
     let commission_rate: bigint = this.commission_percent.get(BigInt("0"))!;
     let new_commission: bigint = this.inline_get_commission(rewards, commission_rate);
-    console.log('new_commission: ' + new_commission.toLocaleString());
+    //console.log('new_commission: ' + new_commission.toLocaleString());
     current_balance += rewards - new_commission;
 
     let new_commission_shares: bigint = this.inline_calculate_new_shares(current_balance, new_commission, current_shares);
-    console.log('new_commission_shares: ' + new_commission_shares.toLocaleString());
+    //console.log('new_commission_shares: ' + new_commission_shares.toLocaleString());
     let current_commission: bigint = this.delegator_shares.get(this.ADMIN) || BigInt("0");
     this.delegator_shares.set(this.ADMIN, current_commission + new_commission_shares);
 
@@ -460,10 +460,10 @@ export class arc_0038Program {
 
     // Calculate withdrawal amount
     let withdrawal_calculation: bigint = (withdrawal_shares * current_balance * this.PRECISION_UNSIGNED) / (current_shares * this.PRECISION_UNSIGNED);
-    console.log(`\x1b[33mwithdrawal calculation: ${withdrawal_calculation.toLocaleString()}\x1b[0m`);
-    console.log('withdrawal shares: ' + withdrawal_shares.toLocaleString());
-    console.log('total shares: ' + current_shares.toLocaleString());
-    console.log('total balance: ' + current_balance.toLocaleString());
+    // console.log(`\x1b[33mwithdrawal calculation: ${withdrawal_calculation.toLocaleString()}\x1b[0m`);
+    // console.log('withdrawal shares: ' + withdrawal_shares.toLocaleString());
+    // console.log('total shares: ' + current_shares.toLocaleString());
+    // console.log('total balance: ' + current_balance.toLocaleString());
 
     // If the calculated withdrawal amount is greater than total_withdrawal, the excess will stay in the pool
     assert(withdrawal_calculation >= total_withdrawal);

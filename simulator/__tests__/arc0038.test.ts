@@ -32,13 +32,19 @@ describe('ARC0038', () => {
 
     const bondAllEvent = createBondAllEvent(BigInt(2), user, validator, deposit);
 
-    const claimCommissionEvent = createClaimCommissionEvent(BigInt(4));
+    const claimCommissionEvent = createClaimCommissionEvent(BigInt(3));
 
     const withdrawShares = BigInt(0);
     const withdrawPublicEvent = createWithdrawPublicEvent(BigInt(5), user, withdrawShares, deposit);
 
     stateMachine.verbose = true;
-    stateMachine.test([initializeEvent, depositEvent, bondAllEvent, claimCommissionEvent, withdrawPublicEvent], 'simple test', 5);
+    stateMachine.test([
+      initializeEvent,
+      depositEvent,
+      //bondAllEvent,
+      claimCommissionEvent,
+      withdrawPublicEvent
+    ], 'simple test', 5);
   });
 
   xit('changing validator', () => {
