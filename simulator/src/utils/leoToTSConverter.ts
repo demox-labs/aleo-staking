@@ -91,6 +91,7 @@ const initLeoContract = (name: string) => {
 import assert from 'assert';
 // interfaces
 export class ${name}Program {
+  signer: string = "not set";
   caller: string = "not set";
   block: {
     height: bigint;
@@ -216,6 +217,7 @@ const generalConvert = (leoLine: string, blockName?: string, programAddress?: st
   leoLine = replaceAssignment(leoLine);
   leoLine = replaceAsserts(leoLine);
   leoLine = replaceSelfCaller(leoLine);
+  leoLine = replaceSelfSigner(leoLine);
   leoLine = replaceForLoop(leoLine);
   leoLine = replaceArrayAccess(leoLine);
   leoLine = replaceHashFieldToToString(leoLine);
@@ -252,6 +254,11 @@ const replaceBlockHeight = (leoLine: string): string => {
 const replaceSelfCaller = (leoLine: string): string => {
   return leoLine.replace('self.caller', 'this.caller');
 }
+
+const replaceSelfSigner = (leoLine: string): string => {
+  return leoLine.replace('self.signer', 'this.signer');
+}
+
 const replaceHashFieldToToString = (leoLine: string): string => {
   //BHP256::hash_to_field(approve)
   // Regular expression to match "BHP256::hash_to_field(variableName);"
@@ -300,9 +307,9 @@ const replaceForLoop = (leoLine: string): string => {
 }
 
 const replaceMapping = (leoLine: string): string => {
-  if (leoLine.includes("residual_delegator")) {
-    console.log(leoLine);
-  }
+  // if (leoLine.includes("residual_delegator")) {
+  //   console.log(leoLine);
+  // }
 
   const originalLine = leoLine;
   const get = /(\w+)\.get\((\w+)\)/;
@@ -329,12 +336,13 @@ const replaceMapping = (leoLine: string): string => {
     leoLine = leoLine.replace(containsRegex, (match, mappingName, keyName) => `this.${mappingName}.has(${keyName})`);
   }
 
-  const getOrUseRegex = /(\w+)\.get_or_use\((\w+),\s*(\w+)\)/;
+  const getOrUseRegex = /(\w+)\.get_or_use\((\w+),\s*(\w+)\)(\.\w+)*/;
   const getOrUseMatch = leoLine.match(getOrUseRegex);
   if (getOrUseMatch) {
-    const [, mappingName, keyName, defaultValue] = getOrUseMatch;
+    const [, mappingName, keyName, defaultValue, propertyName] = getOrUseMatch;
+    const propertyAccess = propertyName ? `?${propertyName}` : '';
     // Adjust to use the correct TypeScript equivalent, considering the "||" for default value
-    leoLine = leoLine.replace(getOrUseRegex, `this.${mappingName}.get(${keyName}) || ${defaultValue}`);
+    leoLine = leoLine.replace(getOrUseRegex, `this.${mappingName}.get(${keyName})${propertyAccess} || ${defaultValue}${propertyAccess}`);
   }
 
   const setRegex = /(\w+)\.set\(([^,]+),\s*(.+)\);/;

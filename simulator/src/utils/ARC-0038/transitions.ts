@@ -1,21 +1,15 @@
 import assert from 'assert';
 
-import { blockEvent } from './ARC0038StateMachine';
-import { arc_0038Program } from '../contracts/arc_0038';
-import { MICROCREDITS_TO_CREDITS, MINIMUM_BOND_POOL } from '../contracts/credits';
+import { blockEvent } from './StateMachine';
+import { arc_0038Program } from '../../contracts/arc_0038';
+import { MICROCREDITS_TO_CREDITS, MINIMUM_BOND_POOL } from '../../contracts/credits';
 
-export const createInitializeEvent = (arc38: arc_0038Program, commission: number, validator: string, height: bigint = BigInt(1)): blockEvent => {
-  const initialDepositRecord = {
-    owner: arc38.ADMIN,
-    microcredits: MINIMUM_BOND_POOL + BigInt(500 * MICROCREDITS_TO_CREDITS),
-  };
+export const createInitializeEvent = (commission: number, validator: string, height: bigint = BigInt(1)): blockEvent => {
   const initializeAction = (program: arc_0038Program) => {
     program.caller = program.ADMIN;
     program.initialize(BigInt(commission), validator);
-    const resultRecord = program.initial_deposit(initialDepositRecord, MINIMUM_BOND_POOL, 'test-validator');
-    assert(resultRecord.microcredits === BigInt(500 * MICROCREDITS_TO_CREDITS), 'Initial deposit failed');
-  };
-  const initializeVerify = (program: arc_0038Program) => {
+    program.initial_deposit(MINIMUM_BOND_POOL, 'test-validator');
+
     // initialize
     assert(program.is_initialized.get(BigInt(0)));
     assert(Number(program.commission_percent.get(BigInt(0))) === commission);
@@ -30,20 +24,20 @@ export const createInitializeEvent = (arc38: arc_0038Program, commission: number
     assert(program.total_shares.get(BigInt(0)) === MINIMUM_BOND_POOL * program.SHARES_TO_MICROCREDITS, 'Total shares not set correctly');
     assert(program.delegator_shares.get(program.ADMIN) === MINIMUM_BOND_POOL * program.SHARES_TO_MICROCREDITS, 'Admin shares not set correctly');
   };
-  return { height: BigInt(height), action: initializeAction, verify: initializeVerify };
+
+  return { height: BigInt(height), act: initializeAction };
 };
 
 export const createSetCommissionPercentEvent = (height: bigint, caller: string, commission: number): blockEvent => {
   const setCommissionEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       console.log('--set_commission_percent--');
       program.caller = caller;
       program.set_commission_percent(BigInt(commission));
-    },
-    verify: (program: arc_0038Program) => {
+
       assert(Number(program.commission_percent.get(BigInt(0))) === commission);
-    },
+    }
   };
 
   return setCommissionEvent;
@@ -52,14 +46,13 @@ export const createSetCommissionPercentEvent = (height: bigint, caller: string, 
 export const createSetNextValidatorEvent = (height: bigint, caller: string, validator: string): blockEvent => {
   const setValidatorEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       console.log('--set_next_validator--');
       program.caller = caller;
       program.set_next_validator(validator);
-    },
-    verify: (program: arc_0038Program) => {
+
       assert(program.validator.get(BigInt(1)) === validator);
-    },
+    }
   };
 
   return setValidatorEvent;
@@ -68,14 +61,13 @@ export const createSetNextValidatorEvent = (height: bigint, caller: string, vali
 export const createUnbondAllEvent = (height: bigint, caller: string, amount: bigint): blockEvent => {
   const unbondAllEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       console.log('--unbond_all--');
       program.caller = caller;
       program.unbond_all(amount);
-    },
-    verify: (program: arc_0038Program) => {
+
       assert(program.credits.bonded.get(caller) === undefined);
-    },
+    }
   };
 
   return unbondAllEvent;
@@ -84,84 +76,100 @@ export const createUnbondAllEvent = (height: bigint, caller: string, amount: big
 export const createClaimUnbondEvent = (height: bigint, caller: string): blockEvent => {
   const claimUnbondEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       console.log('--claim_unbond--');
       program.caller = caller;
       program.claim_unbond();
-    },
-    verify: (program: arc_0038Program) => {
+
       assert(program.credits.unbonding.get(caller) === undefined);
-    },
+    }
   };
 
   return claimUnbondEvent;
 };
 
-export const createBondAllEvent = (height: bigint, caller: string, validator: string, bondAmount: bigint): blockEvent => {
+export const createBondAllEvent = (height: bigint, caller: string, validator: string, bondAmount: bigint, expectedBalance: bigint): blockEvent => {
   const bondAllEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       console.log('--bond_all--');
       program.caller = caller;
       program.bond_all(validator, bondAmount);
-    },
-    verify: (program: arc_0038Program) => {
-      // verify
-    },
+    }
   };
 
   return bondAllEvent;
 };
 
-export const createClaimCommissionEvent = (height: bigint): blockEvent => {
+export const createBondDepositsEvent = (height: bigint, caller: string, validator: string, bondAmount: bigint, doAssert: boolean, expectedBalance?: bigint): blockEvent => {
+  const bondDepositsEvent: blockEvent = {
+    height: height,
+    act: (program: arc_0038Program) => {
+      console.log('--bond_deposits--');
+      program.caller = caller;
+      program.bond_deposits(validator, bondAmount);
+
+      if (!doAssert) return;
+    }
+  };
+
+  return bondDepositsEvent;
+};
+
+export const createClaimCommissionEvent = (height: bigint, doAssert: boolean, expectedCommission?: bigint, expectedBalance?: bigint, expectedPendingDeposits?: bigint): blockEvent => {
   const claimCommissionEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       console.log('--claim_commission--');
       program.caller = program.ADMIN;
       program.claim_commission();
-    },
-    verify: (program: arc_0038Program) => {
-      assert(program.pending_withdrawal.get(BigInt(0)) === BigInt(0));
-    },
+
+      if (!doAssert) return;
+      assert(program.delegator_shares.get(program.ADMIN) === expectedCommission, `Admin shares not set correctly: ${program.delegator_shares.get(program.ADMIN)!.toLocaleString()}`);
+      assert(program.total_balance.get(BigInt(0)) === expectedBalance, 'Total balance not set correctly');
+      assert(program.pending_deposits.get(BigInt(0)) === expectedPendingDeposits, 'Pending deposits not set correctly');
+    }
   };
 
   return claimCommissionEvent;
 };
 
-export const createDepositEvent = (height: bigint, deposit: bigint, owner: string): blockEvent => {
-  const depositRecord = {
-    owner: owner,
-    microcredits: deposit
-  };
+export const createDepositEvent = (height: bigint, deposit: bigint, owner: string, doAssert: boolean, expectedShares?: bigint, expectedCommission?: bigint, expectedBalance?: bigint): blockEvent => {
   const depositAction = (program: arc_0038Program) => {
     console.log('--deposit--');
-    program.caller = 'user0';
-    program.deposit_public(depositRecord, deposit);
+    const balance = program.credits.account.get(owner) || BigInt(0);
+    program.credits.account.set(owner, balance + deposit);
+    program.caller = owner;
+    program.deposit_public(deposit);
+
+    if (!doAssert) return;
+    assert(program.total_balance.get(BigInt(0)) === expectedBalance, 'Total balance not set correctly');
+    assert(program.delegator_shares.get('user0') === expectedShares, `User shares not set correctly: ${program.delegator_shares.get('user0')!.toLocaleString()}`);
+    assert(program.delegator_shares.get(program.ADMIN) === expectedCommission,
+    `Admin shares not set correctly: expected ${expectedCommission?.toLocaleString()} actual ${program.delegator_shares.get(program.ADMIN)!.toLocaleString()}`);
   };
-  const depositVerify = (program: arc_0038Program) => {
-  // assert(program.credits.account.get(program.CORE_PROTOCOL) === deposit, 'Account not updated');
-  // assert(program.total_balance.get(BigInt(0)) === BigInt(10200 * MICROCREDITS_TO_CREDITS), 'Total balance not set correctly');
-  // assert(program.total_shares.get(BigInt(0)) === BigInt(10004948900000 + 99058900000), `Total shares not set correctly: ${program.total_shares.get(BigInt(0))}`);
-  // assert(program.delegator_shares.get('user0') === BigInt(99058900000), `User shares not set correctly: ${program.delegator_shares.get('user0')}`);
-  // assert(program.delegator_shares.get(program.ADMIN) === BigInt(10004948900000), `Admin shares not set correctly: ${program.delegator_shares.get(program.ADMIN)}`);
-  };
-  return { height, action: depositAction, verify: depositVerify };
+
+  return { height, act: depositAction };
 };
 
-export const createWithdrawPublicEvent = (height: bigint, user: string, shares: bigint, microcredits: bigint): blockEvent => {
+export const createWithdrawPublicEvent = (height: bigint, user: string, shares: bigint, microcredits: bigint, doAssert: boolean, expectedCommission?: bigint): blockEvent => {
   const withdrawEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       const sharesToWithdraw = shares > BigInt(0) ? shares : program.delegator_shares.get(user)!;
       console.log('--withdraw--');
       program.caller = user;
       program.withdraw_public(sharesToWithdraw, microcredits);
-    },
-    verify: (program: arc_0038Program) => {
+
+      if (!doAssert) return;
       assert(program.withdrawals.has(user));
       assert(program.credits.unbonding.has(program.CORE_PROTOCOL));
-    },
+      const unbonding = program.credits.unbonding.get(program.CORE_PROTOCOL)!;
+      assert(unbonding.microcredits === microcredits);
+      assert(unbonding.height <= program.current_batch_height.get(BigInt(0))!);
+      assert(program.delegator_shares.get(program.ADMIN) === expectedCommission,
+        `Admin shares not set correctly: expected ${expectedCommission?.toLocaleString()} actual ${program.delegator_shares.get(program.ADMIN)!.toLocaleString()}`);
+    }
   };
 
   return withdrawEvent;
@@ -170,29 +178,26 @@ export const createWithdrawPublicEvent = (height: bigint, user: string, shares: 
 export const createCreateWithdrawClaimEvent = (height: bigint, user: string, shares: bigint): blockEvent => {
   const createClaimWithdrawEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       console.log('--create_withdraw_claim--');
       program.caller = user;
       program.create_withdraw_claim(shares);
-    },
-    verify: (program: arc_0038Program) => {
+
       assert(program.withdrawals.has(user));
-    },
+    }
   };
 
   return createClaimWithdrawEvent;
 };
+
 export const createClaimWithdrawPublicEvent = (height: bigint, user: string, amount: bigint): blockEvent => {
   const claimWithdrawEvent: blockEvent = {
     height: height,
-    action: (program: arc_0038Program) => {
+    act: (program: arc_0038Program) => {
       console.log('--claim_withdraw_public--');
       program.caller = user;
       program.claim_withdrawal_public(user, amount);
-    },
-    verify: (program: arc_0038Program) => {
-
-    },
+    }
   };
 
   return claimWithdrawEvent;

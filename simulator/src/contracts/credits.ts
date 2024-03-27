@@ -20,6 +20,7 @@ export interface unbond_state {
 
 export class creditsProgram {
   caller: string = "not set";
+  signer: string = "not set";
   block: {
     height: bigint;
   } = { height: BigInt(0) };
@@ -77,11 +78,19 @@ export class creditsProgram {
   ) {
     const senderBalance: bigint = this.account.get(sender)!;
     const newSenderBalance: bigint = senderBalance - amount;
+    assert(newSenderBalance >= BigInt(0), "insufficient balance");
     this.account.set(sender, newSenderBalance);
 
-    const recipientBalance: bigint = this.account.get(recipient)!;
+    const recipientBalance: bigint = this.account.get(recipient) || BigInt(0);
     const newRecipientBalance: bigint = recipientBalance + amount;
     this.account.set(recipient, newRecipientBalance);
+  }
+
+  transfer_public_as_signer(
+    recipient: string,
+    amount: bigint
+  ) {
+    this.finalize_transfer_public(this.signer, recipient, amount);
   }
 
   bond_public(
@@ -97,13 +106,14 @@ export class creditsProgram {
     amount: bigint
   ) {
     const bonded: bond_state = this.bonded.get(delegator) || { microcredits: BigInt(0), validator: validator };
-    assert(bonded.validator == validator, "bonded to different validator");
+    assert(bonded.validator === validator, "bonded to different validator");
     assert(bonded.microcredits !== BigInt(0) || amount >= BigInt(MINIMUM_BOND_POOL), "minimum bond amount not met");
-    //assert(bonded.microcredits === BigInt(0) || amount >= BigInt(1 * MICROCREDITS_TO_CREDITS), "must bond at least 1 credit");
+    assert(bonded.microcredits === BigInt(0) || amount >= BigInt(1 * MICROCREDITS_TO_CREDITS), "must bond at least 1 credit");
 
     bonded.microcredits += amount;
-    this.bonded.set(delegator, bonded);
-    this.account.set(delegator, this.account.get(delegator)! - amount);
+    const newSenderBalance: bigint = this.account.get(delegator)! - amount;
+    this.bonded.set(delegator, bonded);assert(newSenderBalance >= BigInt(0), "insufficient balance");
+    this.account.set(delegator, newSenderBalance);
   }
 
   unbond_public(
@@ -145,7 +155,7 @@ export class creditsProgram {
   ) {
     const unbonding: unbond_state | undefined = this.unbonding.get(delegator);
     assert(unbonding !== undefined, "not unbonding");
-    assert(this.block.height >= unbonding!.height, "unbonding period has not passed");
+    assert(this.block.height >= unbonding!.height, `unbonding period has not passed ${this.block.height} ${unbonding!.height}`);
 
     const credits: bigint = unbonding!.microcredits;
     this.unbonding.delete(delegator);

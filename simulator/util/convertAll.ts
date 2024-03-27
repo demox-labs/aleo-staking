@@ -10,8 +10,7 @@ const programPaths = [
   '/delegators/delegator2',
   '/delegators/delegator3',
   '/delegators/delegator4',
-  '/delegators/delegator5',
-  '/arc_0038'
+  '/delegators/delegator5'
 ];
 const suffix = '/src/main.leo';
 
