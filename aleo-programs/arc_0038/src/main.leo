@@ -412,7 +412,8 @@ program arc_0038.aleo {
       claim_block: 0u32
     };
     let bonded: u64 = withdrawals.get_or_use(CORE_PROTOCOL, base).microcredits;
-    assert(bonded >= MINIMUM_BOND_AMOUNT || sufficient_deposits);
+    // Allow the withdrawal if the pool is still bonded, or if there are not enough deposits to maintain the minimum bond amount
+    assert(bonded >= MINIMUM_BOND_AMOUNT || !sufficient_deposits);
 
     // Distribute shares for new commission
     // Add back the withdrawal amount to appropriately calculate rewards before the withdrawal
