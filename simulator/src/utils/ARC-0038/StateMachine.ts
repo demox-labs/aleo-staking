@@ -31,7 +31,9 @@ export interface Transition {
   commission?: bigint;
   validator?: string;
   amount?: bigint;
+  recipient?: string;
   sharesPercent?: number;
+  additionalAction?: (program: StateMachine) => void;
 }
 
 export class StateMachine {
@@ -143,7 +145,7 @@ export class StateMachine {
     console.log(`Finished running ${title}`);
   }
 
-  private runTransition(transition: Transition) {
+  runTransition(transition: Transition) {
     switch (transition.type) {
       case TransitionType.Initialize:
         let failed = false;
@@ -311,7 +313,7 @@ export class StateMachine {
         failed = false;
         this.arc0038.caller = transition.caller;
         try {
-          this.arc0038.claim_withdrawal_public(transition.caller!, transition.amount!);
+          this.arc0038.claim_withdrawal_public(transition.recipient!, transition.amount!);
         } catch (e: any) {
           failed = true;
           if (!transition.shouldFail) {
@@ -320,6 +322,9 @@ export class StateMachine {
         }
         assert(failed == transition.shouldFail);
         break;
+    }
+    if (transition.additionalAction) {
+      transition.additionalAction(this);
     }
   }
 
@@ -332,7 +337,7 @@ export class StateMachine {
     console.log(`pending withdrawals:  ${this.arc0038.pending_withdrawal.get(BigInt(0))?.toLocaleString() || '0'}, ${this.arc0038.pending_withdrawal.get(BigInt(1))?.toLocaleString() || '0'}`);
     console.log(`total shares:         ${this.arc0038.total_shares.get(BigInt(0))?.toLocaleString() || '0'}`);
     console.log('delegators:');
-    this.arc0038.delegator_shares.forEach(printSharesLine);
+    this.arc0038.delegator_shares.forEach((balance: bigint, account: string) => printBalanceLine(balance, account, ' shares'));
     console.log('withdrawals:');
     this.arc0038.withdrawals.forEach(printWithdrawal);
     console.log(`unbonding:            ${this.credits.unbonding.get(protocol)?.microcredits.toLocaleString() || '0'}`);
@@ -343,10 +348,19 @@ export class StateMachine {
     console.log(`--- END BLOCK ${this.block.height.toLocaleString()} ---`);
     console.log(`--- START BLOCK ${(this.block.height + BigInt(1)).toLocaleString()} ---`);
   }
+
+  printCreditsBalances(delta: bigint = BigInt(0)) {
+    console.log('credits balances:');
+    this.credits.account.forEach((balance: bigint, account: string) => printBalanceLine(balance - delta, account));
+  }
 }
 
-const printSharesLine = (shares: bigint, delegator: string) => {
-  console.log(`  ${delegator}:              ${shares.toLocaleString()} shares`);
+const printBalanceLine = (balance: bigint, account: string, suffix: string = '') => {
+  if (account === 'arc_0038.aleo') {
+    account = 'arc38';
+  }
+
+  console.log(`  ${account}:              ${balance.toLocaleString()}`);
 };
 
 const printBondState = (bonded?: bond_state) => {

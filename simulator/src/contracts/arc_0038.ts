@@ -25,6 +25,7 @@ export class arc_0038Program {
   validator: Map<bigint, string> = new Map();
   commission_percent: Map<bigint, bigint> = new Map();
   is_initialized: Map<bigint, boolean> = new Map();
+  MINIMUM_BOND_AMOUNT = BigInt("10000000000");
   UNBONDING_PERIOD = BigInt("360");
   MAX_COMMISSION_RATE = BigInt("500");
   PRECISION_UNSIGNED = BigInt("1000");
@@ -509,13 +510,26 @@ export class arc_0038Program {
     let delegator_balance: bigint = this.delegator_shares.get(owner)!;
     assert(delegator_balance >= withdrawal_shares);
 
-    // Distribute shares for new commission
-    // Simulate call to credits.aleo/bonded.get_or_use(CORE_PROTOCOL).microcredits;
+    // Make sure we aren't unbonding the entire pool if there are pending deposits to keep us above the minimum
     let base: bond_state = {
       validator: 'test-validator',
       microcredits: BigInt("0")
     };
     let bonded: bigint = this.credits.bonded.get(this.CORE_PROTOCOL)?.microcredits || base?.microcredits;
+
+    let base_unbonding: unbond_state = {
+      microcredits: BigInt("0"),
+      height: BigInt("0")
+    };
+    let unbonding: bigint = this.credits.unbonding.get(this.CORE_PROTOCOL)?.microcredits || base_unbonding?.microcredits;
+    let unbonding_withdrawals: bigint = this.pending_withdrawal.get(BigInt("0"))!;
+    let newly_unbonded: bigint = unbonding - unbonding_withdrawals;
+    let pending_deposit_pool: bigint = this.pending_deposits.get(BigInt("0"))!;
+    let sufficient_deposits: boolean = newly_unbonded - total_withdrawal + pending_deposit_pool >= this.MINIMUM_BOND_AMOUNT;
+
+    assert(bonded >= this.MINIMUM_BOND_AMOUNT || sufficient_deposits);
+
+    // Distribute shares for new commission
     // Add back the withdrawal amount to appropriately calculate rewards before the withdrawal
     bonded += total_withdrawal;
     let current_balance: bigint = this.total_balance.get(BigInt("0"))!;
@@ -525,7 +539,6 @@ export class arc_0038Program {
     let new_commission: bigint = this.inline_get_commission(rewards, commission_rate);
     current_balance += rewards - new_commission;
 
-    let pending_deposit_pool: bigint = this.pending_deposits.get(BigInt("0"))!;
     let new_commission_shares: bigint = this.inline_calculate_new_shares(current_balance, pending_deposit_pool, new_commission, current_shares);
     let current_commission: bigint = this.delegator_shares.get(this.ADMIN) || BigInt("0");
 
@@ -554,8 +567,7 @@ export class arc_0038Program {
     this.withdrawals.set(owner, withdrawal);
 
     // Update pending withdrawal
-    let currently_unbonding: bigint = this.pending_withdrawal.get(BigInt("0"))!;
-    this.pending_withdrawal.set(BigInt("0"), currently_unbonding + total_withdrawal);
+    this.pending_withdrawal.set(BigInt("0"), unbonding_withdrawals + total_withdrawal);
 
     // Update total balance
     this.total_balance.set(BigInt("0"), current_balance - total_withdrawal);
@@ -620,7 +632,7 @@ export class arc_0038Program {
     // Update withdrawals mappings
     let withdrawal: withdrawal_state = {
       microcredits: total_withdrawal,
-      claim_block: this.block.height
+      claim_block: this.block.height + BigInt(1)
     };
     this.withdrawals.set(owner, withdrawal);
 

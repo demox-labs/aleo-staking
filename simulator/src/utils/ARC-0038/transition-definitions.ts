@@ -1,5 +1,5 @@
 import { MICROCREDITS_TO_CREDITS } from '../../contracts/credits';
-import { Transition, TransitionType } from './StateMachine';
+import { StateMachine, Transition, TransitionType } from './StateMachine';
 
 export const precision = 1000;
 export const admin = 'admin';
@@ -16,7 +16,8 @@ export const initialize = (
   commission: number = 0.05,
   validator: string = testValidator,
   caller: string = admin,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => (
   {
     type: TransitionType.Initialize,
@@ -24,7 +25,8 @@ export const initialize = (
     caller,
     commission: BigInt(commission * precision),
     validator,
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const initialDeposit = (
@@ -32,7 +34,8 @@ export const initialDeposit = (
   amount: number = 10000 * MICROCREDITS_TO_CREDITS,
   caller: string = admin,
   validator: string = testValidator,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => (
   {
     height: BigInt(height),
@@ -40,57 +43,66 @@ export const initialDeposit = (
     caller,
     validator,
     amount: BigInt(amount),
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const setCommissionPercent = (
   height: number,
   commission: number,
   caller: string = admin,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.SetCommissionPercent,
     caller,
     commission: BigInt(commission * precision),
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const setNextValidator = (
   height: number,
   validator: string,
   caller: string = admin,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.SetNextValidator,
     caller,
     validator,
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const unbondAll = (
   height: number,
   caller: string = user0,
   amount: number,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.UnbondAll,
     caller,
     amount: BigInt(amount),
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const claimUnbond = (
   height: number,
   caller: string = user0,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.ClaimUnbond,
     caller,
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const bondAll = (
@@ -98,14 +110,16 @@ export const bondAll = (
   amount: number,
   validator: string = testValidator,
   caller: string = user0,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.BondAll,
     caller,
     validator,
     amount: BigInt(amount),
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const bondDeposits = (
@@ -113,14 +127,16 @@ export const bondDeposits = (
   amount: number,
   validator: string = testValidator,
   caller: string = user0,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.BondDeposits,
     caller,
     validator,
     amount: BigInt(amount),
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const claimCommission = (
@@ -136,13 +152,15 @@ export const deposit = (
   height: number,
   amount: number,
   caller: string,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.Deposit,
     caller,
     amount: BigInt(amount),
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const withdrawPublic = (
@@ -150,38 +168,46 @@ export const withdrawPublic = (
   caller: string,
   sharesPercent: number,
   withdrawAmount: number,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.WithdrawPublic,
     caller,
     sharesPercent,
     amount: BigInt(withdrawAmount),
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const createWithdrawClaim = (
   height: number,
   caller: string,
   sharesPercent: number,
-  shouldFail: boolean = false
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.CreateWithdrawClaim,
     caller,
     sharesPercent,
-    shouldFail
+    shouldFail,
+    additionalAction
   });
 
 export const claimWithdrawPublic = (
   height: number,
   caller: string,
   amount: number,
-  shouldFail: boolean = false
+  recipient: string,
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.ClaimWithdrawPublic,
     caller,
+    recipient,
     amount: BigInt(amount),
-    shouldFail
+    shouldFail,
+    additionalAction
   });
