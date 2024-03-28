@@ -32,7 +32,6 @@ export const createSetCommissionPercentEvent = (height: bigint, caller: string, 
   const setCommissionEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--set_commission_percent--');
       program.caller = caller;
       program.set_commission_percent(BigInt(commission));
 
@@ -47,7 +46,6 @@ export const createSetNextValidatorEvent = (height: bigint, caller: string, vali
   const setValidatorEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--set_next_validator--');
       program.caller = caller;
       program.set_next_validator(validator);
 
@@ -62,7 +60,6 @@ export const createUnbondAllEvent = (height: bigint, caller: string, amount: big
   const unbondAllEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--unbond_all--');
       program.caller = caller;
       program.unbond_all(amount);
 
@@ -77,7 +74,6 @@ export const createClaimUnbondEvent = (height: bigint, caller: string): blockEve
   const claimUnbondEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--claim_unbond--');
       program.caller = caller;
       program.claim_unbond();
 
@@ -92,7 +88,6 @@ export const createBondAllEvent = (height: bigint, caller: string, validator: st
   const bondAllEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--bond_all--');
       program.caller = caller;
       program.bond_all(validator, bondAmount);
     }
@@ -105,7 +100,6 @@ export const createBondDepositsEvent = (height: bigint, caller: string, validato
   const bondDepositsEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--bond_deposits--');
       program.caller = caller;
       program.bond_deposits(validator, bondAmount);
 
@@ -120,7 +114,6 @@ export const createClaimCommissionEvent = (height: bigint, doAssert: boolean, ex
   const claimCommissionEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--claim_commission--');
       program.caller = program.ADMIN;
       program.claim_commission();
 
@@ -136,7 +129,6 @@ export const createClaimCommissionEvent = (height: bigint, doAssert: boolean, ex
 
 export const createDepositEvent = (height: bigint, deposit: bigint, owner: string, doAssert: boolean, expectedShares?: bigint, expectedCommission?: bigint, expectedBalance?: bigint): blockEvent => {
   const depositAction = (program: arc_0038Program) => {
-    console.log('--deposit--');
     const balance = program.credits.account.get(owner) || BigInt(0);
     program.credits.account.set(owner, balance + deposit);
     program.caller = owner;
@@ -157,7 +149,6 @@ export const createWithdrawPublicEvent = (height: bigint, user: string, shares: 
     height: height,
     act: (program: arc_0038Program) => {
       const sharesToWithdraw = shares > BigInt(0) ? shares : program.delegator_shares.get(user)!;
-      console.log('--withdraw--');
       program.caller = user;
       program.withdraw_public(sharesToWithdraw, microcredits);
 
@@ -179,7 +170,6 @@ export const createCreateWithdrawClaimEvent = (height: bigint, user: string, sha
   const createClaimWithdrawEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--create_withdraw_claim--');
       program.caller = user;
       program.create_withdraw_claim(shares);
 
@@ -194,7 +184,6 @@ export const createClaimWithdrawPublicEvent = (height: bigint, user: string, amo
   const claimWithdrawEvent: blockEvent = {
     height: height,
     act: (program: arc_0038Program) => {
-      console.log('--claim_withdraw_public--');
       program.caller = user;
       program.claim_withdrawal_public(user, amount);
     }

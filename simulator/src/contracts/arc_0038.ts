@@ -75,14 +75,28 @@ export class arc_0038Program {
     validator_address: string,
   ) {
     assert(this.caller === this.ADMIN);
-    // credits.aleo/transfer_public_as_signer(CORE_PROTOCOL, microcredits);
-    this.credits.signer = this.caller;
-    this.credits.caller = "arc_0038.aleo";
-    this.credits.transfer_public_as_signer(this.CORE_PROTOCOL, microcredits);
-    this.credits.caller = "arc_0038.aleo";
-    this.credits.bond_public(validator_address, microcredits);
+    let bond_state = this.credits.bonded.get(this.CORE_PROTOCOL);
+    if (bond_state) {
+      bond_state = {...bond_state};
+    }
+    let balance: bigint = this.credits.account.get(this.caller) || BigInt("0");
+    try {
+      this.credits.signer = this.caller;
+      this.credits.caller = "arc_0038.aleo";
+      this.credits.transfer_public_as_signer(this.CORE_PROTOCOL, microcredits);
+      this.credits.caller = "arc_0038.aleo";
+      this.credits.bond_public(validator_address, microcredits);
 
-    return this.finalize_initial_deposit(microcredits);
+      return this.finalize_initial_deposit(microcredits);
+    } catch (error) {
+      if (bond_state) {
+        this.credits.bonded.set(this.CORE_PROTOCOL, bond_state!);
+      } else {
+        this.credits.bonded.delete(this.CORE_PROTOCOL);
+      }
+      this.credits.account.set(this.caller, balance);
+      throw error;
+    }
   }
 
   finalize_initial_deposit(
@@ -191,7 +205,7 @@ export class arc_0038Program {
       this.credits.caller = "arc_0038.aleo";
       this.credits.unbond_public(pool_balance);
 
-      return this.finalize_unbond_all(pool_balance);
+      return this.finalize_unbond_all();
     } catch (error) {
       if (unbond_state) {
         this.credits.unbonding.set(this.CORE_PROTOCOL, unbond_state);
@@ -209,7 +223,6 @@ export class arc_0038Program {
   }
 
   finalize_unbond_all(
-    pool_balance: bigint,
   ) {
     let next_validator: boolean = this.validator.has(BigInt("1"));
     assert(next_validator);
@@ -279,7 +292,7 @@ export class arc_0038Program {
       this.credits.caller = "arc_0038.aleo";
       this.credits.bond_public(validator_address, amount);
 
-      return this.finalize_bond_all(validator_address, amount);
+      return this.finalize_bond_all(validator_address);
     } catch (error) {
       if (bond_state) {
         this.credits.bonded.set(this.CORE_PROTOCOL, bond_state!);
@@ -292,13 +305,11 @@ export class arc_0038Program {
   }
 
   finalize_bond_all(
-    validator_address: string,
-    amount: bigint,
+    validator_address: string
   ) {
     let account_balance: bigint = this.credits.account.get(this.CORE_PROTOCOL)!; // this.credits.get(this.CORE_PROTOCOL);
     let pending_withdrawals: bigint = this.pending_withdrawal.get(BigInt("1"))!;
     assert(account_balance >= pending_withdrawals);
-
 
     // Set validator
     let next_validator: string = this.validator.get(BigInt("1"))!;
@@ -333,7 +344,7 @@ export class arc_0038Program {
       this.credits.caller = "arc_0038.aleo";
       this.credits.bond_public(validator_address, amount);
 
-      return this.finalize_bond_deposits(validator_address, amount);
+      return this.finalize_bond_deposits(amount);
     } catch (error) {
       if (bond_state) {
         this.credits.bonded.set(this.CORE_PROTOCOL, bond_state);
@@ -346,7 +357,6 @@ export class arc_0038Program {
   }
 
   finalize_bond_deposits(
-    validator_address: string,
     amount: bigint,
   ) {
     let account_balance: bigint = this.credits.account.get(this.CORE_PROTOCOL)!; // this.credits.get(this.CORE_PROTOCOL);
@@ -432,7 +442,6 @@ export class arc_0038Program {
     let pending_deposit_pool: bigint = this.pending_deposits.get(BigInt("0"))!;
     let new_commission_shares: bigint = this.inline_calculate_new_shares(current_balance, pending_deposit_pool, new_commission, current_shares);
     let current_commission: bigint = this.delegator_shares.get(this.ADMIN) || BigInt("0");
-    this.delegator_shares.set(this.ADMIN, current_commission + new_commission_shares);
 
     current_shares += new_commission_shares;
     current_balance += new_commission;
@@ -442,6 +451,7 @@ export class arc_0038Program {
 
     // Ensure mint amount is valid
     assert(new_shares >= BigInt("1"));
+    this.delegator_shares.set(this.ADMIN, current_commission + new_commission_shares);
 
     // Update total balance
     this.total_balance.set(BigInt("0"), current_balance);
@@ -526,8 +536,7 @@ export class arc_0038Program {
     let newly_unbonded: bigint = unbonding - unbonding_withdrawals;
     let pending_deposit_pool: bigint = this.pending_deposits.get(BigInt("0"))!;
     let sufficient_deposits: boolean = newly_unbonded - total_withdrawal + pending_deposit_pool >= this.MINIMUM_BOND_AMOUNT;
-
-    assert(bonded >= this.MINIMUM_BOND_AMOUNT || sufficient_deposits);
+    assert(bonded >= this.MINIMUM_BOND_AMOUNT || !sufficient_deposits);
 
     // Distribute shares for new commission
     // Add back the withdrawal amount to appropriately calculate rewards before the withdrawal

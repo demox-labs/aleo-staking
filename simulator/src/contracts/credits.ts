@@ -28,6 +28,7 @@ export class creditsProgram {
   account: Map<string, bigint> = new Map();
   bonded: Map<string, bond_state> = new Map();
   unbonding: Map<string, unbond_state> = new Map();
+  committee: Set<string> = new Set(['test-validator', 'new-validator']);
 
   transfer_public_to_private(
     receiver: string,
@@ -105,6 +106,7 @@ export class creditsProgram {
     validator: string,
     amount: bigint
   ) {
+    assert(this.committee.has(validator));
     const bonded: bond_state = this.bonded.get(delegator) || { microcredits: BigInt(0), validator: validator };
     assert(bonded.validator === validator, "bonded to different validator");
     assert(bonded.microcredits !== BigInt(0) || amount >= BigInt(MINIMUM_BOND_POOL), "minimum bond amount not met");
@@ -131,17 +133,17 @@ export class creditsProgram {
     assert(bonded!.microcredits >= amount, "insufficient credits to unbond");
 
     let unbondAmount = amount;
-    const newAmount: bigint = bonded!.microcredits - amount;
-    if (newAmount < BigInt(MINIMUM_BOND_POOL)) {
+    const remainingBond: bigint = bonded!.microcredits - amount;
+    if (remainingBond < BigInt(MINIMUM_BOND_POOL)) {
       unbondAmount = bonded!.microcredits;
       this.bonded.delete(delegator);
     } else {
-      bonded!.microcredits = newAmount;
+      bonded!.microcredits = remainingBond;
       this.bonded.set(delegator, bonded!);
     }
 
     const unbonding: unbond_state = this.unbonding.get(delegator) || { microcredits: BigInt(0), height: this.block.height };
-    unbonding.microcredits += amount;
+    unbonding.microcredits += unbondAmount;
     unbonding.height = this.block.height + this.UNBONDING_PERIOD;
     this.unbonding.set(delegator, unbonding);
   }

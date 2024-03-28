@@ -141,11 +141,15 @@ export const bondDeposits = (
 
 export const claimCommission = (
   height: number,
-  caller: string = admin
+  caller: string = admin,
+  shouldFail: boolean = false,
+  additionalAction?: (stateMachine: StateMachine) => void
 ): Transition => ({
     height: BigInt(height),
     type: TransitionType.ClaimCommission,
-    caller
+    caller,
+    shouldFail,
+    additionalAction
   });
 
 export const deposit = (
